@@ -42,6 +42,7 @@ enum Lookup: Sendable {
     case nothingFound
     case needsMailAccess
     case needsMessagesAccess
+    case messagesFailed
     case mailMissing
     case noSources
     case failed
@@ -89,8 +90,10 @@ enum CodeFinder {
                 if let code = try await newestTextCode(since: cutoff) { codes.append(code) }
             } catch MessagesStoreError.noAccess {
                 attempt.messagesProblem = .needsMessagesAccess
+            } catch MessagesStoreError.missing {
+                // Messages has never been set up, so there's nothing to find there.
             } catch {
-                // No Messages database yet, so there's nothing to find there.
+                attempt.messagesProblem = .messagesFailed
             }
         }
         if options.readsMail {

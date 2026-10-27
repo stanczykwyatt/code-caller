@@ -16,6 +16,9 @@ public struct TextMessage: Sendable, Equatable {
 public enum MessagesStoreError: Error, Equatable {
     /// macOS blocked the read. Messages needs Full Disk Access.
     case noAccess
+    /// There's no Messages database, because Messages has never been set up.
+    case missing
+    /// The database couldn't be read, for example because a macOS update changed it.
     case unreadable(String)
 }
 
@@ -39,7 +42,7 @@ public enum MessagesStore {
     public static func messages(at path: String = defaultPath, since cutoff: Date, limit: Int = 25) throws -> [TextMessage] {
         let file = open(path, O_RDONLY)
         guard file >= 0 else {
-            throw errno == ENOENT ? MessagesStoreError.unreadable("There's no Messages database yet.") : MessagesStoreError.noAccess
+            throw errno == ENOENT ? MessagesStoreError.missing : MessagesStoreError.noAccess
         }
         close(file)
 
@@ -66,10 +69,16 @@ public enum MessagesStore {
         sqlite3_bind_int(statement, 2, Int32(limit))
 
         var messages: [TextMessage] = []
-        while sqlite3_step(statement) == SQLITE_ROW {
-            guard let text = text(of: statement), !text.isEmpty else { continue }
-            let sender = sqlite3_column_text(statement, 3).map { String(cString: $0) } ?? ""
-            messages.append(TextMessage(received: date(fromAppleTimestamp: sqlite3_column_int64(statement, 0)), sender: sender, text: text))
+        var step = sqlite3_step(statement)
+        while step == SQLITE_ROW {
+            if let text = text(of: statement), !text.isEmpty {
+                let sender = sqlite3_column_text(statement, 3).map { String(cString: $0) } ?? ""
+                messages.append(TextMessage(received: date(fromAppleTimestamp: sqlite3_column_int64(statement, 0)), sender: sender, text: text))
+            }
+            step = sqlite3_step(statement)
+        }
+        guard step == SQLITE_DONE else {
+            throw MessagesStoreError.unreadable(String(cString: sqlite3_errmsg(database)))
         }
         return messages
     }

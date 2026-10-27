@@ -86,6 +86,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             state.canReadMessages = false
             notice = .needsMessagesAccess
             openSettings()
+        case .messagesFailed:
+            notice = .messagesFailed
         case .mailMissing:
             notice = .mailMissing
         case .noSources:
