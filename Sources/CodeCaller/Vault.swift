@@ -101,6 +101,18 @@ final class Vault {
         return added
     }
 
+    /// The code to copy for an account. A counter-based account moves to its next counter, and
+    /// that's saved before the code is handed out, so the same code is never given twice.
+    func code(for account: OTPAccount) async throws -> String {
+        guard account.kind == .hotp else { return account.code() }
+        guard isUnlocked, let index = accounts.firstIndex(where: { $0.id == account.id }) else { throw VaultError.locked }
+        let next = accounts[index].usingNextCode()
+        var updated = accounts
+        updated[index] = next.account
+        try await save(updated)
+        return next.code
+    }
+
     func delete(_ account: OTPAccount) async throws {
         guard isUnlocked else { throw VaultError.locked }
         try await save(accounts.filter { $0.id != account.id })

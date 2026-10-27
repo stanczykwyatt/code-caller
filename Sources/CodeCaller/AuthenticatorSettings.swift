@@ -36,6 +36,11 @@ struct AuthenticatorSettings: View {
                         HStack {
                             Text(account.displayName)
                                 .lineLimit(1)
+                            if account.kind == .hotp {
+                                Text("Counter-based")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
                             Spacer()
                             Button {
                                 pendingDeletion = account
@@ -93,6 +98,7 @@ private struct AddAccountSheet: View {
     @State private var issuer = ""
     @State private var name = ""
     @State private var setupKey = ""
+    @State private var kind = OTPKind.totp
 
     /// The decoded key, if it's long enough to be a real one.
     private var secret: Data? {
@@ -106,6 +112,10 @@ private struct AddAccountSheet: View {
                     TextField("Website or app", text: $issuer)
                     TextField("Account", text: $name, prompt: Text("Optional"))
                     SecureField("Setup key", text: $setupKey)
+                    Picker("Code type", selection: $kind) {
+                        Text("Time-based (most websites)").tag(OTPKind.totp)
+                        Text("Counter-based").tag(OTPKind.hotp)
+                    }
                 } header: {
                     Text("Add an account")
                 } footer: {
@@ -123,7 +133,7 @@ private struct AddAccountSheet: View {
                 Button("Cancel", role: .cancel) { dismiss() }
                     .keyboardShortcut(.cancelAction)
                 Button("Add") {
-                    if let secret { add(OTPAccount(issuer: issuer, name: name, secret: secret)) }
+                    if let secret { add(OTPAccount(issuer: issuer, name: name, secret: secret, kind: kind)) }
                     dismiss()
                 }
                 .keyboardShortcut(.defaultAction)
