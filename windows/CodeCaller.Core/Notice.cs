@@ -37,6 +37,9 @@ public sealed record Notice(string Title, string? Detail, NoticeSymbol Symbol, b
     public static Notice ReadFailed(IReadOnlyList<string> places) =>
         new($"Couldn't read {JoinPlaces(places)}", "Try again in a moment", NoticeSymbol.Warning, false, Long);
 
+    public static Notice CopyFailed() =>
+        new("Couldn't copy the code", "Another app is using the clipboard. Try again", NoticeSymbol.Warning, false, Long);
+
     public static Notice ShortcutTaken(string shortcut) =>
         new("Shortcut unavailable", $"Another app is using {shortcut}. Pick a different one in Settings", NoticeSymbol.Warning, false, Long);
 
