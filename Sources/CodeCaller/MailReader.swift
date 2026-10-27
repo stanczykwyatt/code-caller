@@ -8,17 +8,7 @@ struct MailMessage: Sendable {
 }
 
 enum MailAccess: Sendable {
-    case allowed, denied, notAsked, unknown
-
-    init(status: OSStatus) {
-        switch Int(status) {
-        case Int(noErr): self = .allowed
-        case Int(errAEEventNotPermitted): self = .denied
-        case Int(errAEEventWouldRequireUserConsent): self = .notAsked
-        // Includes procNotFound, which means Mail isn't running.
-        default: self = .unknown
-        }
-    }
+    case allowed, denied, unknown
 }
 
 enum MailError: Error {
@@ -92,13 +82,34 @@ enum MailReader {
         try await run(script) { _ in () }
     }
 
-    /// Whether macOS lets Code Caller send events to Mail. Mail has to be running to tell.
-    static func access(askingIfNeeded ask: Bool) async -> MailAccess {
+    /// Asks Mail for its own name, which reads nothing from your email. The first time, this is
+    /// what makes macOS ask whether Code Caller may control Mail.
+    static func confirmAccess() async -> MailAccess {
+        let script = """
+        with timeout of 120 seconds
+            tell application id "com.apple.mail" to get name
+        end timeout
+        """
+        do {
+            try await run(script) { _ in () }
+            return .allowed
+        } catch MailError.notAllowed {
+            return .denied
+        } catch {
+            return .unknown
+        }
+    }
+
+    /// Whether access to Mail is turned off in System Settings. Mail has to be running to tell.
+    ///
+    /// This check can report access as granted before macOS has ever asked, so only a
+    /// denial is trusted. `confirmAccess()` is the real test.
+    static func isDenied() async -> Bool {
         await withCheckedContinuation { continuation in
             queue.async {
                 let target = NSAppleEventDescriptor(bundleIdentifier: bundleID)
-                let status = AEDeterminePermissionToAutomateTarget(target.aeDesc, typeWildCard, typeWildCard, ask)
-                continuation.resume(returning: MailAccess(status: status))
+                let status = AEDeterminePermissionToAutomateTarget(target.aeDesc, AEEventClass(kAECoreSuite), AEEventID(kAEGetData), false)
+                continuation.resume(returning: Int(status) == Int(errAEEventNotPermitted))
             }
         }
     }

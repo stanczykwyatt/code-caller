@@ -78,7 +78,7 @@ struct MailAccessStatus: View {
             }
         case .denied:
             Button("Open System Settings…", action: allow)
-        case .notAsked, .unknown:
+        case .unknown:
             Button("Allow…", action: allow)
         }
     }
