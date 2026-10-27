@@ -86,8 +86,8 @@ public class ImporterTests
     public void GoogleAuthenticatorExport()
     {
         var result = Import(GoogleExport);
-        Assert.Equal(2, result.Accounts.Count);
-        Assert.Equal(1, result.Skipped);
+        Assert.Equal(3, result.Accounts.Count);
+        Assert.Equal(0, result.Skipped);
 
         var first = result.Accounts[0];
         Assert.Equal("Example", first.Issuer);
@@ -103,6 +103,12 @@ public class ImporterTests
         Assert.Equal("12345678901234567890"u8.ToArray(), second.Secret);
         Assert.Equal(OtpAlgorithm.Sha256, second.Algorithm);
         Assert.Equal(8, second.Digits);
+
+        // Type 1 is counter-based, and field 7 holds the counter for its next code.
+        var third = result.Accounts[2];
+        Assert.Equal(("Legacy", "hotp-user"), (third.Issuer, third.Name));
+        Assert.Equal((OtpKind.Hotp, 5UL), (third.Kind, third.Counter));
+        Assert.Equal(Hotp.Code("abcdefghij"u8, 5), third.TakeNextHotpCode());
     }
 
     [Fact]
@@ -110,15 +116,15 @@ public class ImporterTests
     {
         // Some QR readers hand back the data without percent-encoding, or turn "+" into a space.
         var link = Uri.UnescapeDataString(GoogleExport);
-        Assert.Equal(2, Import(link).Accounts.Count);
+        Assert.Equal(3, Import(link).Accounts.Count);
     }
 
     [Fact]
     public void GoogleAuthenticatorExportSplitAcrossSeveralCodes()
     {
         var result = Import(GoogleExport + "\n" + GoogleExport);
-        Assert.Equal(4, result.Accounts.Count);
-        Assert.Equal(2, result.Skipped);
+        Assert.Equal(6, result.Accounts.Count);
+        Assert.Equal(0, result.Skipped);
     }
 
     [Theory]
@@ -319,8 +325,11 @@ public class ImporterTests
               }
             }
             """);
-        Assert.Equal(["Mastodon", "GitHub"], result.Accounts.Select(a => a.Issuer));
-        Assert.Equal(2, result.Skipped);
+        Assert.Equal(["Mastodon", "GitHub", "Legacy"], result.Accounts.Select(a => a.Issuer));
+        // Steam codes use their own alphabet, so they're still skipped.
+        Assert.Equal(1, result.Skipped);
+        Assert.Equal((OtpKind.Hotp, 3UL), (result.Accounts[2].Kind, result.Accounts[2].Counter));
+        Assert.Equal(OtpKind.Totp, result.Accounts[0].Kind);
         var mastodon = result.Accounts[0];
         Assert.Equal((OtpAlgorithm.Sha256, 8, 60), (mastodon.Algorithm, mastodon.Digits, mastodon.Period));
         Assert.Equal("alice@example.com", mastodon.Name);
@@ -384,6 +393,11 @@ public class ImporterTests
                   "name": "Legacy VPN",
                   "secret": "JBSWY3DPEHPK3PXP",
                   "otp": { "account": "vpn", "digits": 6, "counter": 4, "algorithm": "SHA1", "tokenType": "HOTP" }
+                },
+                {
+                  "name": "Steam",
+                  "secret": "JBSWY3DPEHPK3PXP",
+                  "otp": { "account": "gamer", "digits": 5, "period": 30, "algorithm": "SHA1", "tokenType": "STEAM" }
                 }
               ],
               "groups": [],
@@ -394,9 +408,10 @@ public class ImporterTests
               "appOrigin": "android"
             }
             """);
-        Assert.Equal(["GitHub", "Cloud Console"], result.Accounts.Select(a => a.Issuer));
-        Assert.Equal(["octocat", "ops@example.com"], result.Accounts.Select(a => a.Name));
+        Assert.Equal(["GitHub", "Cloud Console", "Legacy VPN"], result.Accounts.Select(a => a.Issuer));
+        Assert.Equal(["octocat", "ops@example.com", "vpn"], result.Accounts.Select(a => a.Name));
         Assert.Equal(1, result.Skipped);
+        Assert.Equal((OtpKind.Hotp, 4UL), (result.Accounts[2].Kind, result.Accounts[2].Counter));
         Assert.Equal((OtpAlgorithm.Sha512, 8), (result.Accounts[1].Algorithm, result.Accounts[1].Digits));
     }
 

@@ -225,9 +225,9 @@ public static class AccountImporter
         foreach (var entry in Items(db, "entries"))
         {
             var info = Child(entry, "info");
-            var type = Text(entry, "type") ?? "totp";
-            if (!type.Equals("totp", StringComparison.OrdinalIgnoreCase)
-                || !OtpAccount.TryParseAlgorithm(Text(info, "algo"), out var algorithm))
+            var kind = Kind(Text(entry, "type") ?? "totp");
+            var counter = CounterOf(info);
+            if (kind is null || counter is null || !OtpAccount.TryParseAlgorithm(Text(info, "algo"), out var algorithm))
             {
                 skipped++;
                 continue;
@@ -238,7 +238,9 @@ public static class AccountImporter
                 Base32.Decode(Text(info, "secret") ?? ""),
                 algorithm,
                 Number(info, "digits", 6),
-                Number(info, "period", 30));
+                Number(info, "period", 30),
+                kind: kind.Value,
+                counter: counter.Value);
             if (account is null) skipped++;
             else accounts.Add(account);
         }
@@ -258,9 +260,9 @@ public static class AccountImporter
         foreach (var service in Items(root, "services"))
         {
             var otp = Child(service, "otp");
-            var type = Text(otp, "tokenType") ?? "TOTP";
-            if (!type.Equals("TOTP", StringComparison.OrdinalIgnoreCase)
-                || !OtpAccount.TryParseAlgorithm(Text(otp, "algorithm"), out var algorithm))
+            var kind = Kind(Text(otp, "tokenType") ?? "TOTP");
+            var counter = CounterOf(otp);
+            if (kind is null || counter is null || !OtpAccount.TryParseAlgorithm(Text(otp, "algorithm"), out var algorithm))
             {
                 skipped++;
                 continue;
@@ -275,7 +277,9 @@ public static class AccountImporter
                 Base32.Decode(Text(service, "secret") ?? ""),
                 algorithm,
                 Number(otp, "digits", 6),
-                Number(otp, "period", 30));
+                Number(otp, "period", 30),
+                kind: kind.Value,
+                counter: counter.Value);
             if (account is null) skipped++;
             else accounts.Add(account);
         }
@@ -285,8 +289,29 @@ public static class AccountImporter
     static ImportResult Finish(List<OtpAccount> accounts, int skipped, string app)
     {
         if (accounts.Count == 0 && skipped == 0) throw new ImportException($"That {app} export has no two-factor accounts in it.");
-        if (accounts.Count == 0) throw new ImportException($"None of the accounts in that {app} export use time-based codes.");
+        if (accounts.Count == 0) throw new ImportException($"None of the accounts in that {app} export use a kind of code Copy 2FA supports.");
         return new ImportResult(accounts, skipped);
+    }
+
+    /// <summary>TOTP or HOTP, as exports spell them. Anything else, such as Steam, is null and skipped.</summary>
+    static OtpKind? Kind(string type) => type.ToUpperInvariant() switch
+    {
+        "TOTP" => OtpKind.Totp,
+        "HOTP" => OtpKind.Hotp,
+        _ => null,
+    };
+
+    /// <summary>A counter-based account's counter for its next code: zero if there isn't one, null if it's not a valid number.</summary>
+    static ulong? CounterOf(JsonElement element)
+    {
+        var value = Child(element, "counter");
+        return value.ValueKind switch
+        {
+            JsonValueKind.Undefined or JsonValueKind.Null => 0,
+            JsonValueKind.Number => value.TryGetUInt64(out var number) ? number : null,
+            JsonValueKind.String => ulong.TryParse(value.GetString(), NumberStyles.None, CultureInfo.InvariantCulture, out var number) ? number : null,
+            _ => null,
+        };
     }
 
     static JsonElement Child(JsonElement element, string name) =>

@@ -16,7 +16,7 @@ namespace Copy2FA.Core.Authenticator;
 ///   Algorithm algorithm = 4;   // 0 unspecified, 1 SHA1, 2 SHA256, 3 SHA512, 4 MD5
 ///   DigitCount digits = 5;     // 0 unspecified, 1 six, 2 eight
 ///   OtpType type = 6;          // 0 unspecified, 1 HOTP, 2 TOTP
-///   int64 counter = 7;
+///   int64 counter = 7;         // HOTP only: the counter for the next code
 /// }
 /// </code>
 /// </remarks>
@@ -93,7 +93,7 @@ public static class GoogleAuthenticatorExport
         byte[]? secret = null;
         var name = "";
         var issuer = "";
-        ulong algorithm = 0, digits = 0, type = 0;
+        ulong algorithm = 0, digits = 0, type = 0, counter = 0;
 
         var reader = new ProtoReader(message);
         while (reader.TryReadTag(out var field, out var wireType))
@@ -106,12 +106,18 @@ public static class GoogleAuthenticatorExport
                 case (4, ProtoReader.Varint): algorithm = reader.ReadVarint(); break;
                 case (5, ProtoReader.Varint): digits = reader.ReadVarint(); break;
                 case (6, ProtoReader.Varint): type = reader.ReadVarint(); break;
+                case (7, ProtoReader.Varint): counter = reader.ReadVarint(); break;
                 default: reader.Skip(wireType); break;
             }
         }
 
-        // HOTP needs a counter kept in step with the server, and MD5 isn't a standard TOTP algorithm.
-        if (type == 1) return null;
+        // MD5 isn't a standard algorithm for these codes, so those accounts are skipped.
+        OtpKind? kind = type switch
+        {
+            0 or 2 => OtpKind.Totp,
+            1 => OtpKind.Hotp,
+            _ => null,
+        };
         OtpAlgorithm? otpAlgorithm = algorithm switch
         {
             0 or 1 => OtpAlgorithm.Sha1,
@@ -125,7 +131,7 @@ public static class GoogleAuthenticatorExport
             2 => 8,
             _ => null,
         };
-        if (otpAlgorithm is null || digitCount is null) return null;
+        if (kind is null || otpAlgorithm is null || digitCount is null) return null;
 
         // Names often carry the issuer too, as in "GitHub:octocat".
         var colon = name.IndexOf(':');
@@ -134,6 +140,7 @@ public static class GoogleAuthenticatorExport
             if (issuer.Trim().Length == 0) issuer = name[..colon];
             name = name[(colon + 1)..];
         }
-        return OtpAccount.Create(issuer, name, secret, otpAlgorithm.Value, digitCount.Value, 30);
+        // For counter-based accounts, the export's counter is the one the next code comes from.
+        return OtpAccount.Create(issuer, name, secret, otpAlgorithm.Value, digitCount.Value, 30, kind: kind.Value, counter: counter);
     }
 }
