@@ -30,8 +30,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         picker.onCopy = { [weak self] account in self?.copyAuthenticatorCode(account) }
         picker.onClose = { [weak self] in
             guard let self else { return }
-            vault.lock(after: preferences.vaultUnlockSeconds)
+            vault.lock(after: unlockHoldSeconds)
         }
+        // Nothing that shows codes may outlive the vault's lock.
+        vault.onLock = { [weak self] in self?.picker.close() }
         registerShortcuts()
         if !preferences.hasSeenWelcome {
             showWelcome()
@@ -123,9 +125,35 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             picker.close()
             return
         }
+        stopRecordingShortcut()
         Task {
-            guard await vault.unlock(reason: "show your authenticator codes") else { return }
+            // "Every time" means every time, even if Settings already unlocked the vault.
+            let fresh = preferences.vaultUnlockSeconds == 0
+            guard await unlockVault(reason: "show your authenticator codes", fresh: fresh) else { return }
             picker.show(accounts: vault.accounts)
+        }
+    }
+
+    /// How long the vault stays open after use. "Every time" still gives an open Settings
+    /// window two minutes to manage accounts.
+    private var unlockHoldSeconds: Int {
+        if preferences.vaultUnlockSeconds > 0 { return preferences.vaultUnlockSeconds }
+        return settingsWindow?.isVisible == true ? 120 : 0
+    }
+
+    /// Unlocks the vault, explaining any keychain problem. Returns whether it's unlocked.
+    private func unlockVault(reason: String, fresh: Bool = false) async -> Bool {
+        switch await vault.unlock(reason: reason, fresh: fresh) {
+        case .unlocked:
+            return true
+        case .cancelled:
+            return false
+        case .failed:
+            showAlert(
+                "Couldn't Open the Authenticator",
+                "Code Caller couldn't read its keychain item. If macOS asks whether Code Caller may use it, choose Always Allow."
+            )
+            return false
         }
     }
 
@@ -135,16 +163,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         announce(notice)
     }
 
-    private func finishImport(_ result: ImportResult, fromFile: Bool) {
+    /// Saves imported accounts and reports what happened. `clearsPasteboard` removes a pasted
+    /// secret from the clipboard, but only once it's safely saved.
+    private func finishImport(_ result: ImportResult, fromFile: Bool, clearsPasteboard: Bool = false) async {
+        // The vault may have locked while a file was being picked.
+        guard await unlockVault(reason: "add authenticator accounts") else { return }
         do {
-            let added = try vault.add(result.accounts)
+            let added = try await vault.add(result.accounts)
+            if clearsPasteboard { NSPasteboard.general.clearContents() }
+            vault.lock(after: unlockHoldSeconds)
             var lines = [added == 1 ? "Added 1 account." : "Added \(added) accounts."]
             let duplicates = result.accounts.count - added
             if duplicates > 0 {
                 lines.append(duplicates == 1 ? "1 was already in Code Caller." : "\(duplicates) were already in Code Caller.")
             }
             if result.skipped > 0 {
-                lines.append("\(result.skipped) skipped because Code Caller only supports time-based codes, not counter-based or Steam ones.")
+                lines.append("\(result.skipped) couldn't be used, because they're counter-based or Steam codes, or are missing a valid setup key.")
             }
             if fromFile {
                 lines.append("Delete the file you imported now. Anyone who finds it could copy your codes.")
@@ -261,22 +295,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         showShortcutsInMenu()
     }
 
-    private func record(_ event: NSEvent) {
-        guard let kind = state.recordingShortcut else { return }
+    /// Returns whether the key press was used. Only presses in the Settings window itself
+    /// are recorded, so typing in a sheet or another window still works normally.
+    private func record(_ event: NSEvent) -> Bool {
+        guard let kind = state.recordingShortcut, let settingsWindow,
+              event.window === settingsWindow, settingsWindow.attachedSheet == nil else { return false }
         if event.keyCode == UInt16(kVK_Escape) {
             stopRecordingShortcut()
-            return
+            return true
         }
         let other = kind == .copyCode ? preferences.authenticatorShortcut : preferences.shortcut
-        guard let shortcut = Shortcut(event: event), shortcut != other else {
+        guard let shortcut = Shortcut(event: event), !shortcut.conflicts(with: other) else {
             NSSound.beep()
-            return
+            return true
         }
         switch kind {
         case .copyCode: preferences.shortcut = shortcut
         case .authenticator: preferences.authenticatorShortcut = shortcut
         }
         stopRecordingShortcut()
+        return true
     }
 
     // MARK: - Mail access
@@ -299,9 +337,8 @@ extension AppDelegate: NSWindowDelegate {
     func windowWillClose(_ notification: Notification) {
         guard (notification.object as? NSWindow) === settingsWindow else { return }
         stopRecordingShortcut()
-        if preferences.vaultUnlockSeconds == 0 {
-            vault.lock()
-        }
+        // Uses the current setting, even if it changed while Settings was open.
+        vault.lock(after: preferences.vaultUnlockSeconds)
     }
 }
 
@@ -313,8 +350,8 @@ extension AppDelegate: SettingsActions {
         authenticatorHotKey.unregister()
         state.recordingShortcut = kind
         shortcutRecorder = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            MainActor.assumeIsolated { self?.record(event) }
-            return nil
+            let used = MainActor.assumeIsolated { self?.record(event) ?? false }
+            return used ? nil : event
         }
     }
 
@@ -362,11 +399,8 @@ extension AppDelegate: SettingsActions {
 
     func unlockVault() {
         Task {
-            guard await vault.unlock(reason: "manage your authenticator accounts") else { return }
-            // "Every time" keeps it open until Settings closes; otherwise it locks on its timer.
-            if preferences.vaultUnlockSeconds > 0 {
-                vault.lock(after: preferences.vaultUnlockSeconds)
-            }
+            guard await unlockVault(reason: "manage your authenticator accounts") else { return }
+            vault.lock(after: unlockHoldSeconds)
         }
     }
 
@@ -382,7 +416,8 @@ extension AppDelegate: SettingsActions {
         panel.message = "Choose a QR code image, or an export from another authenticator or password manager."
         guard panel.runModal() == .OK, let url = panel.url else { return }
         do {
-            finishImport(try AccountImporter.accounts(from: try Data(contentsOf: url)), fromFile: true)
+            let result = try AccountImporter.accounts(from: try Data(contentsOf: url))
+            Task { await finishImport(result, fromFile: true) }
         } catch {
             showImportError(error)
         }
@@ -399,23 +434,26 @@ extension AppDelegate: SettingsActions {
             } else {
                 throw ImportError.unrecognized
             }
-            // The clipboard held a secret, so it shouldn't stay there.
-            pasteboard.clearContents()
-            finishImport(result, fromFile: false)
+            // The clipboard held a secret, so it's cleared once the accounts are saved.
+            Task { await finishImport(result, fromFile: false, clearsPasteboard: true) }
         } catch {
             showImportError(error)
         }
     }
 
     func addAccount(_ account: OTPAccount) {
-        finishImport(ImportResult(accounts: [account]), fromFile: false)
+        Task { await finishImport(ImportResult(accounts: [account]), fromFile: false) }
     }
 
     func deleteAccount(_ account: OTPAccount) {
-        do {
-            try vault.delete(account)
-        } catch {
-            showAlert("Couldn't Delete the Account", "The keychain didn't accept the change. Unlock Code Caller and try again.")
+        Task {
+            guard await unlockVault(reason: "delete an authenticator account") else { return }
+            do {
+                try await vault.delete(account)
+                vault.lock(after: unlockHoldSeconds)
+            } catch {
+                showAlert("Couldn't Delete the Account", "The keychain didn't accept the change. Try again.")
+            }
         }
     }
 }
