@@ -9,34 +9,46 @@ import Foundation
 public enum CodeExtractor {
     /// The score a candidate needs before it counts as a code.
     static let threshold = 6
+    /// Texts that only mention a "code" or "PIN" need the number right next to that word,
+    /// so chat like "I'll pin the address, 1830 Market St" isn't copied.
+    static let casualTextThreshold = 8
 
     /// Returns the most likely verification code in an email, or nil if it doesn't contain one.
     public static func code(subject: String, body: String) -> String? {
         let subject = normalize(subject)
         let body = normalize(String(body.prefix(20_000)))
         guard isVerificationMessage(subject: subject, body: body) else { return nil }
-        return bestCode(in: [(subject, true), (body, false)])
+        return bestCode(in: [(subject, true), (body, false)], threshold: threshold)
     }
 
     /// Returns the most likely verification code in a text message, or nil if it doesn't contain one.
     ///
     /// Texts have no subject and are short, so a word like "code" or "PIN" is enough to
-    /// consider one. Promotions such as "use code SAVE20 at checkout" are still skipped.
+    /// consider one, as long as the number is right next to it. Promotions such as
+    /// "use code SAVE20 at checkout" are still skipped.
     public static func code(inText text: String) -> String? {
         let text = normalize(String(text.prefix(2_000)))
-        guard contains(Patterns.verification, in: text) || contains(Patterns.codeWord, in: text) else { return nil }
-        return bestCode(in: [(text, false)])
+        if contains(Patterns.verification, in: text) {
+            return bestCode(in: [(text, false)], threshold: threshold)
+        }
+        guard contains(Patterns.codeWord, in: text) else { return nil }
+        return bestCode(in: [(text, false)], threshold: casualTextThreshold)
     }
 
-    private static func bestCode(in texts: [(String, Bool)]) -> String? {
+    private static func bestCode(in texts: [(String, Bool)], threshold: Int) -> String? {
         var best: (code: String, score: Int)?
         for (text, inSubject) in texts {
             let text = text as NSString
+            let unrelated = ranges(of: Patterns.unrelated, in: text)
+            // "Code" in "zip code" or "promo code" says nothing about a verification code.
+            let keywords = ranges(of: Patterns.keyword, in: text).filter { keyword in
+                !unrelated.contains { NSIntersectionRange($0, keyword).length > 0 }
+            }
             let context = Context(
                 text: text,
                 inSubject: inSubject,
-                keywords: ranges(of: Patterns.keyword, in: text),
-                unrelated: ranges(of: Patterns.unrelated, in: text),
+                keywords: keywords,
+                unrelated: unrelated,
                 promotions: ranges(of: Patterns.promotion, in: text),
                 dates: ranges(of: Patterns.date, in: text)
             )
@@ -140,8 +152,10 @@ public enum CodeExtractor {
            distance <= 40, distance < (keywordBefore ?? .max) {
             score -= 4
         }
-        // Promo codes are followed by what they're for, like "at checkout" or "20% off".
-        if let distance = distance(after: candidate.range, to: context.promotions), distance <= 25 {
+        // Promo codes are words like SAVE20, followed by what they're for, like "at checkout" or
+        // "20% off". Number-only codes are left alone, since sign-in emails often advertise too.
+        if candidate.shape == .mixed || candidate.shape == .hyphenated,
+           let distance = distance(after: candidate.range, to: context.promotions), distance <= 25 {
             score -= 4
         }
         if candidate.couldBeYear, let distance = distance(before: candidate.range, to: context.dates), distance <= 20 {
@@ -248,7 +262,9 @@ private enum Patterns {
             + words("passwords?|passwort|kennwort|contrase[ñn]a|mot de passe|security")
     )
     static let unrelated = regex(words(
-        "orders?|invoice|receipt|tracking|shipment|ticket|case|promo(?:tion)?|coupon|discount|voucher|gift"
+        // Phrases come first so "zip code" matches as a whole rather than as "zip".
+        "(?:zip|postal|post|area|country|promo|promotional|discount|coupon|gift|referral|tracking|order|dress|source|qr|bar) ?codes?"
+            + "|orders?|invoice|receipt|tracking|shipment|ticket|case|promo(?:tion)?|coupon|discount|voucher|gift"
             + "|phone|tel|call|fax|zip|postal|booking|reservation|flight|ref(?:erence)?|ending in|card"
             + "|account number|amount|total|price|pedido|commande|bestellung|factura|rechnung"
     ))
