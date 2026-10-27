@@ -53,10 +53,14 @@ struct AuthenticatorSettings: View {
                         }
                     }
                     HStack {
-                        Button("Import File…", action: actions.importAccounts)
-                        Button("Paste", action: actions.pasteAccounts)
-                            .help("Paste an otpauth link, a Google Authenticator transfer link or a QR code image")
-                        Button("Add Manually…") { isAddingAccount = true }
+                        Menu("Add Accounts") {
+                            Button("Import File…", action: actions.importAccounts)
+                            Button("Import from 2fa…", action: actions.importFromTwoFA)
+                            Button("Paste Link or QR Code", action: actions.pasteAccounts)
+                            Divider()
+                            Button("Enter Setup Key…") { isAddingAccount = true }
+                        }
+                        .fixedSize()
                         Spacer()
                         Button("Lock", action: actions.lockVault)
                     }
@@ -71,7 +75,7 @@ struct AuthenticatorSettings: View {
             } header: {
                 Text("Accounts")
             } footer: {
-                Text("Import QR code screenshots, Google Authenticator transfer codes, otpauth links, and exports from Apple Passwords, Bitwarden, 1Password, Aegis, 2FAS and andOTP. Authy and Duo can't export accounts, so add those again by scanning a new QR code from each website.")
+                Text("Import QR code screenshots, Google Authenticator transfer codes, otpauth links, the 2fa command-line tool's keys, and exports from Apple Passwords, Bitwarden, 1Password, Aegis, 2FAS and andOTP. Authy and Duo can't export accounts, so add those again by scanning a new QR code from each website.")
                     .foregroundStyle(.secondary)
             }
         }

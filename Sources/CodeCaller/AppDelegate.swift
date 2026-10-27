@@ -179,7 +179,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// Saves imported accounts and reports what happened. `clearsPasteboard` removes a pasted
     /// secret from the clipboard, but only once it's safely saved.
-    private func finishImport(_ result: ImportResult, fromFile: Bool, clearsPasteboard: Bool = false) async {
+    /// Saves imported accounts and reports what happened, ending with `advice` about the imported
+    /// file. `clearsPasteboard` removes a pasted secret from the clipboard once it's safely saved.
+    private func finishImport(_ result: ImportResult, advice: String? = nil, clearsPasteboard: Bool = false) async {
         // The vault may have locked while a file was being picked.
         guard await unlockVault(reason: "add authenticator accounts") else { return }
         do {
@@ -194,8 +196,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             if result.skipped > 0 {
                 lines.append("\(result.skipped) couldn't be used, because they're Steam codes or are missing a valid setup key.")
             }
-            if fromFile {
-                lines.append("Delete the file you imported now. Anyone who finds it could copy your codes.")
+            if let advice {
+                lines.append(advice)
             }
             showAlert(added > 0 ? "Accounts Imported" : "Nothing New to Add", lines.joined(separator: " "))
         } catch {
@@ -425,13 +427,27 @@ extension AppDelegate: SettingsActions {
     func importAccounts() {
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [.image, .json, .commaSeparatedText, .plainText, .text]
+        panel.message = "Choose a QR code image, or an export from another authenticator or password manager."
+        importFile(with: panel, advice: "Delete the file you imported now. Anyone who finds it could copy your codes.")
+    }
+
+    /// The 2fa command-line tool keeps its keys in a hidden `.2fa` file in the home folder.
+    func importFromTwoFA() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.data]
+        panel.showsHiddenFiles = true
+        panel.directoryURL = URL(fileURLWithPath: UserHome.path, isDirectory: true)
+        panel.message = "Choose the .2fa file in your home folder. It's where the 2fa command-line tool keeps its keys."
+        importFile(with: panel, advice: "The .2fa file keeps your keys unencrypted. Once you've switched over, delete it.")
+    }
+
+    private func importFile(with panel: NSOpenPanel, advice: String) {
         panel.allowsMultipleSelection = false
         panel.canChooseDirectories = false
-        panel.message = "Choose a QR code image, or an export from another authenticator or password manager."
         guard panel.runModal() == .OK, let url = panel.url else { return }
         do {
             let result = try AccountImporter.accounts(from: try Data(contentsOf: url))
-            Task { await finishImport(result, fromFile: true) }
+            Task { await finishImport(result, advice: advice) }
         } catch {
             showImportError(error)
         }
@@ -449,14 +465,14 @@ extension AppDelegate: SettingsActions {
                 throw ImportError.unrecognized
             }
             // The clipboard held a secret, so it's cleared once the accounts are saved.
-            Task { await finishImport(result, fromFile: false, clearsPasteboard: true) }
+            Task { await finishImport(result, clearsPasteboard: true) }
         } catch {
             showImportError(error)
         }
     }
 
     func addAccount(_ account: OTPAccount) {
-        Task { await finishImport(ImportResult(accounts: [account]), fromFile: false) }
+        Task { await finishImport(ImportResult(accounts: [account])) }
     }
 
     func deleteAccount(_ account: OTPAccount) {
