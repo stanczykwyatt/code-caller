@@ -27,7 +27,11 @@ struct WelcomeView: View {
                     MailAccessStatus(access: state.mailAccess, allow: actions.allowMailAccess)
                 }
                 Step(number: 2, title: "Press \(preferences.shortcut.displayString)",
-                     detail: "Your newest code is copied. Paste it with ⌘V.") {
+                     detail: "Your newest code is copied. Paste it with ⌘V. Want codes from texts too? Turn on Messages in Settings.") {
+                    EmptyView()
+                }
+                Step(number: 3, title: "Add authenticator accounts (optional)",
+                     detail: "Import from Apple Passwords, Google Authenticator and more in Settings, then press \(preferences.authenticatorShortcut.displayString) to pick one.") {
                     EmptyView()
                 }
             }

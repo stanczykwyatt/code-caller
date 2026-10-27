@@ -3,27 +3,31 @@ import SwiftUI
 struct SettingsView: View {
     @Bindable var preferences: Preferences
     let state: AppState
+    let vault: Vault
+    let actions: any SettingsActions
+
+    var body: some View {
+        TabView {
+            GeneralSettings(preferences: preferences, state: state, actions: actions)
+                .tabItem { Label("General", systemImage: "gearshape") }
+            AuthenticatorSettings(preferences: preferences, state: state, vault: vault, actions: actions)
+                .tabItem { Label("Authenticator", systemImage: CodeSource.authenticator.symbol) }
+        }
+        .frame(width: 480)
+        .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+private struct GeneralSettings: View {
+    @Bindable var preferences: Preferences
+    let state: AppState
     let actions: any SettingsActions
 
     var body: some View {
         Form {
             Section {
                 LabeledContent("Shortcut") {
-                    HStack(spacing: 8) {
-                        if state.shortcutIsTaken {
-                            Image(systemName: "exclamationmark.triangle.fill")
-                                .foregroundStyle(.orange)
-                                .help("Another app is using this shortcut. Pick a different one.")
-                        }
-                        Button(state.isRecordingShortcut ? "Type a shortcut…" : preferences.shortcut.displayString) {
-                            if state.isRecordingShortcut {
-                                actions.stopRecordingShortcut()
-                            } else {
-                                actions.startRecordingShortcut()
-                            }
-                        }
-                        .frame(minWidth: 120)
-                    }
+                    ShortcutButton(kind: .copyCode, shortcut: preferences.shortcut, state: state, actions: actions)
                 }
                 Picker("Look back", selection: $preferences.lookbackMinutes) {
                     ForEach([5, 10, 15, 30], id: \.self) { Text("\($0) minutes").tag($0) }
@@ -45,10 +49,7 @@ struct SettingsView: View {
                 if preferences.readsMessages {
                     LabeledContent("Full Disk Access") {
                         if state.canReadMessages {
-                            HStack(spacing: 4) {
-                                Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
-                                Text("Allowed")
-                            }
+                            AllowedLabel()
                         } else {
                             Button("Open System Settings…", action: actions.openFullDiskAccessSettings)
                         }
@@ -76,16 +77,13 @@ struct SettingsView: View {
             }
 
             Section {
-                Text("Code Caller has no internet access. It only reads Mail when you press the shortcut, and never saves anything it reads.")
+                Text("Code Caller has no internet access. It only reads Mail and Messages when you press the shortcut, and never saves anything it reads.")
                     .foregroundStyle(.secondary)
                 LabeledContent("Version", value: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "Development")
                 Link("Source code on GitHub", destination: URL(string: "https://github.com/stanczykwyatt/code-caller")!)
             }
         }
         .formStyle(.grouped)
-        .frame(width: 460)
-        .fixedSize(horizontal: false, vertical: true)
-        .onDisappear { actions.stopRecordingShortcut() }
     }
 
     private var messagesFooter: String {
@@ -96,6 +94,41 @@ struct SettingsView: View {
     }
 }
 
+struct ShortcutButton: View {
+    let kind: ShortcutKind
+    let shortcut: Shortcut
+    let state: AppState
+    let actions: any SettingsActions
+
+    var body: some View {
+        HStack(spacing: 8) {
+            if state.takenShortcuts.contains(kind) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.orange)
+                    .help("Another app is using this shortcut. Pick a different one.")
+                    .accessibilityLabel("Another app is using this shortcut")
+            }
+            Button(state.recordingShortcut == kind ? "Type a shortcut…" : shortcut.displayString) {
+                if state.recordingShortcut == kind {
+                    actions.stopRecordingShortcut()
+                } else {
+                    actions.startRecordingShortcut(kind)
+                }
+            }
+            .frame(minWidth: 120)
+        }
+    }
+}
+
+struct AllowedLabel: View {
+    var body: some View {
+        HStack(spacing: 4) {
+            Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
+            Text("Allowed")
+        }
+    }
+}
+
 struct MailAccessStatus: View {
     let access: MailAccess
     let allow: () -> Void
@@ -103,10 +136,7 @@ struct MailAccessStatus: View {
     var body: some View {
         switch access {
         case .allowed:
-            HStack(spacing: 4) {
-                Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
-                Text("Allowed")
-            }
+            AllowedLabel()
         case .denied:
             Button("Open System Settings…", action: allow)
         case .unknown:
