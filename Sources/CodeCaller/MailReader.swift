@@ -151,6 +151,10 @@ enum MailReader {
                         end try
                     end repeat
                 end try
+                -- Codes sometimes get marked as junk.
+                try
+                    set recent to recent & (every message of junk mailbox whose date received ≥ cutoff)
+                end try
                 repeat with aMessage in recent
                     if (count of found) ≥ 25 then exit repeat
                     try
