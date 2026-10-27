@@ -30,7 +30,7 @@ public static class ThunderbirdProfiles
             }
             else if (section.Name.StartsWith("Install", StringComparison.OrdinalIgnoreCase))
             {
-                // Newer versions name each installation's default profile here, always relative.
+                // Newer versions name each installation's default profile here: relative unless it's a full path.
                 section.Values.TryGetValue("Default", out path);
             }
             else

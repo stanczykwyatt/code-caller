@@ -39,7 +39,13 @@ internal sealed class CodeFinder(IReadOnlyList<IMailSource> sources)
             var (found, failed) = await SearchOnceAsync(available, DateTimeOffset.Now - lookback, cancellation);
             if (found is not null) return new LookupResult(LookupStatus.Found, found, places);
             if (failed.Count == available.Count) return new LookupResult(LookupStatus.Failed, null, failed);
-            if (attempt == RetryDelays.Length) return new LookupResult(LookupStatus.NothingFound, null, places);
+            if (attempt == RetryDelays.Length)
+            {
+                // Saying a source was searched when it couldn't be read would be misleading.
+                return failed.Count > 0
+                    ? new LookupResult(LookupStatus.Failed, null, failed)
+                    : new LookupResult(LookupStatus.NothingFound, null, places);
+            }
             await Task.Delay(RetryDelays[attempt], cancellation);
         }
     }

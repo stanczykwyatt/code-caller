@@ -185,7 +185,7 @@ internal sealed class SettingsWindow : Form
             {
                 System.Media.SystemSounds.Beep.Play();
                 box.Shortcut = id == HotKeys.CopyLatestCode ? host.Settings.CopyShortcut : host.Settings.AuthenticatorShortcut;
-                taken.Text = candidate == other ? "Already used above" : "Another app is using that";
+                taken.Text = candidate == other ? "Already used by the other shortcut" : "Another app is using that";
                 taken.Visible = true;
                 return;
             }
