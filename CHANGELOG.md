@@ -1,8 +1,8 @@
 # Changelog
 
-## 0.1.0 (unreleased)
+## 0.1.0 (2026-10-27)
 
-The first version.
+The first version. Runs on macOS 14 or later, on Apple silicon and Intel Macs.
 
 - Copy your newest verification code from Apple Mail with one shortcut (⌃⇧C by default).
 - Finds numeric, grouped and letter-and-number codes in English, Spanish, French, German, Chinese, Japanese and Korean emails.
