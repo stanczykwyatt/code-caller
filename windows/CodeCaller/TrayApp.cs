@@ -1,12 +1,15 @@
 using System.Reflection;
+using System.Security.Cryptography;
+using CodeCaller.Authenticator;
 using CodeCaller.Core;
+using CodeCaller.Core.Authenticator;
 using CodeCaller.Core.Settings;
 using CodeCaller.Mail;
 using Microsoft.Win32;
 
 namespace CodeCaller;
 
-/// <summary>The app itself: a tray icon and a global shortcut that copies the newest code.</summary>
+/// <summary>The app itself: a tray icon, two global shortcuts, and the windows they open.</summary>
 internal sealed class TrayApp : ApplicationContext
 {
     static string SettingsPath =>
@@ -17,12 +20,15 @@ internal sealed class TrayApp : ApplicationContext
     readonly SecureClipboard clipboard;
     readonly NotifyIcon trayIcon;
     readonly ToolStripMenuItem copyItem;
+    readonly ToolStripMenuItem authenticatorItem;
     readonly OutlookSource outlook = new();
     readonly ThunderbirdSource thunderbird = new();
     readonly CodeFinder finder;
     readonly HashSet<int> takenShortcuts = [];
     readonly System.Windows.Forms.Timer progressDelay = new() { Interval = 400 };
     bool isLooking;
+    bool isUnlocking;
+    PickerWindow? picker;
 
     public TrayApp()
     {
@@ -32,6 +38,7 @@ internal sealed class TrayApp : ApplicationContext
         hotKeys.Pressed += id =>
         {
             if (id == HotKeys.CopyLatestCode) CopyLatestCode();
+            else if (id == HotKeys.OpenAuthenticator) OpenAuthenticator();
         };
         progressDelay.Tick += (_, _) =>
         {
@@ -40,8 +47,10 @@ internal sealed class TrayApp : ApplicationContext
         };
 
         copyItem = new ToolStripMenuItem("Copy Latest Code", null, (_, _) => CopyLatestCode());
+        authenticatorItem = new ToolStripMenuItem("Authenticator…", null, (_, _) => OpenAuthenticator());
         var menu = new ContextMenuStrip();
         menu.Items.Add(copyItem);
+        menu.Items.Add(authenticatorItem);
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add(new ToolStripMenuItem("Quit", null, (_, _) => Quit()));
 
@@ -142,13 +151,100 @@ internal sealed class TrayApp : ApplicationContext
         }
     }
 
+    // Authenticator
+
+    async void OpenAuthenticator()
+    {
+        if (picker is not null)
+        {
+            picker.Activate();
+            return;
+        }
+        if (!Vault.Exists)
+        {
+            notice.Present(Notice.NoAccounts());
+            return;
+        }
+
+        List<OtpAccount>? accounts;
+        try
+        {
+            accounts = await UnlockAccountsAsync(hotKeys.Handle);
+        }
+        catch (Exception)
+        {
+            notice.Present(Notice.VaultUnreadable());
+            return;
+        }
+        if (accounts is null) return;
+        if (accounts.Count == 0)
+        {
+            notice.Present(Notice.NoAccounts());
+            return;
+        }
+        picker = new PickerWindow(accounts);
+        picker.Chosen += CopyFromAuthenticator;
+        picker.FormClosed += (_, _) => picker = null;
+        picker.Show();
+    }
+
+    void CopyFromAuthenticator(OtpAccount account)
+    {
+        var now = DateTimeOffset.UtcNow;
+        var code = Totp.Code(account, now);
+        if (!clipboard.Copy(code, Settings.ClearClipboardSeconds))
+        {
+            notice.Present(Notice.CopyFailed());
+            return;
+        }
+        notice.Present(Notice.CopiedFromAuthenticator(
+            Settings.ShowCodeInNotice ? code : null,
+            account.Title,
+            Totp.SecondsRemaining(account.Period, now)));
+    }
+
+    async Task<List<OtpAccount>?> UnlockAccountsAsync(IntPtr owner)
+    {
+        if (isUnlocking) return null;
+        isUnlocking = true;
+        try
+        {
+            switch (await WindowsHello.VerifyAsync(owner, "Unlock your Code Caller accounts"))
+            {
+                case HelloResult.Unavailable:
+                    notice.Present(Notice.HelloUnavailable());
+                    return null;
+                case HelloResult.Failed:
+                    notice.Present(Notice.NotVerified());
+                    return null;
+                case HelloResult.Canceled:
+                    return null;
+            }
+            try
+            {
+                return Vault.Load();
+            }
+            catch (Exception error) when (error is CryptographicException or FormatException or IOException or UnauthorizedAccessException)
+            {
+                notice.Present(Notice.VaultUnreadable());
+                return null;
+            }
+        }
+        finally
+        {
+            isUnlocking = false;
+        }
+    }
+
     // Shortcuts
 
     void RegisterShortcuts()
     {
         takenShortcuts.Clear();
         if (!hotKeys.Register(HotKeys.CopyLatestCode, Settings.CopyShortcut)) takenShortcuts.Add(HotKeys.CopyLatestCode);
+        if (!hotKeys.Register(HotKeys.OpenAuthenticator, Settings.AuthenticatorShortcut)) takenShortcuts.Add(HotKeys.OpenAuthenticator);
         copyItem.ShortcutKeyDisplayString = Settings.CopyShortcut.ToString();
+        authenticatorItem.ShortcutKeyDisplayString = Settings.AuthenticatorShortcut.ToString();
     }
 
     // The menu
@@ -185,6 +281,7 @@ internal sealed class TrayApp : ApplicationContext
         if (disposing)
         {
             SystemEvents.SessionEnding -= OnSessionEnding;
+            picker?.Close();
             clipboard.Dispose();
             hotKeys.Dispose();
             trayIcon.Dispose();
