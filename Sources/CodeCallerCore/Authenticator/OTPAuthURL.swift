@@ -3,7 +3,9 @@ import Foundation
 /// Reads `otpauth://totp/...` links, the format inside every authenticator QR code.
 public enum OTPAuthURL {
     public static func account(from link: String) -> OTPAccount? {
-        guard let components = URLComponents(string: link.trimmingCharacters(in: .whitespacesAndNewlines)),
+        let link = link.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Some generators leave spaces in labels like "Acme Inc:alice" unencoded.
+        guard let components = URLComponents(string: link) ?? URLComponents(string: link.replacingOccurrences(of: " ", with: "%20")),
               components.scheme?.lowercased() == "otpauth",
               components.host?.lowercased() == "totp" else { return nil }
         let items = Dictionary(
