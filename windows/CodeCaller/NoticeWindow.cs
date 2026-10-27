@@ -33,6 +33,9 @@ internal sealed class NoticeWindow : Form
     public NoticeWindow()
     {
         FormBorderStyle = FormBorderStyle.None;
+        ControlBox = false;
+        MinimizeBox = false;
+        MaximizeBox = false;
         ShowInTaskbar = false;
         StartPosition = FormStartPosition.Manual;
         AutoScaleMode = AutoScaleMode.None;
@@ -54,7 +57,7 @@ internal sealed class NoticeWindow : Form
         get
         {
             var parameters = base.CreateParams;
-            parameters.Style = Native.WS_POPUP;
+            parameters.Style |= Native.WS_POPUP;
             // Topmost, kept off the taskbar and Alt+Tab, never activated, and clicks pass straight through.
             parameters.ExStyle |= Native.WS_EX_TOPMOST | Native.WS_EX_TOOLWINDOW | Native.WS_EX_NOACTIVATE
                 | Native.WS_EX_TRANSPARENT | Native.WS_EX_LAYERED;
