@@ -8,7 +8,7 @@ import SwiftUI
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private let preferences = Preferences()
     private let state = AppState()
-    private let hotKey = HotKey()
+    private let hotKey = HotKey(id: 1)
     private let clipboard = Clipboard()
     private lazy var confirmation = ConfirmationPanel()
     private var statusItem: NSStatusItem?
