@@ -1,0 +1,67 @@
+name: Windows
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "windows/**"
+      - ".github/workflows/windows.yml"
+  pull_request:
+    paths:
+      - "windows/**"
+      - ".github/workflows/windows.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    env:
+      DOTNET_NOLOGO: "true"
+      DOTNET_CLI_TELEMETRY_OPTOUT: "true"
+      # Uses the .NET that comes with the runner. If it's newer than .NET 8, the tests still run on it.
+      DOTNET_ROLL_FORWARD: Major
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Show the .NET SDK
+        run: dotnet --version
+
+      - name: Run tests
+        run: dotnet test windows --configuration Release
+
+      - name: Check the app has no networking code
+        shell: bash
+        run: |
+          pattern='System\.Net|HttpClient|WebClient|WebRequest|Socket|Windows\.Networking|Windows\.Web\.'
+          # Only source files: bin and obj hold build output, not code anyone wrote. The one allowed
+          # match is the line in Directory.Build.targets that removes the SDK's default HTTP import.
+          matches="$(grep -rnE --include='*.cs' --include='*.csproj' --include='*.props' --include='*.targets' --exclude-dir=bin --exclude-dir=obj "$pattern" windows \
+            | grep -v 'Using Remove="System.Net.Http"' || true)"
+          if [ -n "$matches" ]; then
+            echo "$matches"
+            echo "::error::Code Caller must never contain networking code."
+            exit 1
+          fi
+          echo "No networking code."
+
+      - name: Publish for x64
+        run: dotnet publish windows/CodeCaller --configuration Release --runtime win-x64 --self-contained -p:PublishSingleFile=true --output publish/win-x64
+
+      - name: Publish for Arm64
+        run: dotnet publish windows/CodeCaller --configuration Release --runtime win-arm64 --self-contained -p:PublishSingleFile=true --output publish/win-arm64
+
+      - name: Upload the x64 build
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: CodeCaller-win-x64
+          path: publish/win-x64/CodeCaller.exe
+          if-no-files-found: error
+
+      - name: Upload the Arm64 build
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: CodeCaller-win-arm64
+          path: publish/win-arm64/CodeCaller.exe
+          if-no-files-found: error
