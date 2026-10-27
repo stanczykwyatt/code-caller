@@ -1,13 +1,13 @@
 import Foundation
 
-/// Reads `otpauth://totp/...` links, the format inside every authenticator QR code.
+/// Reads `otpauth://totp/...` and `otpauth://hotp/...` links, the format inside every authenticator QR code.
 public enum OTPAuthURL {
     public static func account(from link: String) -> OTPAccount? {
         let link = link.trimmingCharacters(in: .whitespacesAndNewlines)
         // Some generators leave spaces in labels like "Acme Inc:alice" unencoded.
         guard let components = URLComponents(string: link) ?? URLComponents(string: link.replacingOccurrences(of: " ", with: "%20")),
               components.scheme?.lowercased() == "otpauth",
-              components.host?.lowercased() == "totp" else { return nil }
+              let kind = OTPKind(rawValue: components.host?.lowercased() ?? "") else { return nil }
         let items = Dictionary(
             (components.queryItems ?? []).map { ($0.name.lowercased(), $0.value ?? "") },
             uniquingKeysWith: { first, _ in first }
@@ -38,7 +38,10 @@ public enum OTPAuthURL {
             secret: secret,
             algorithm: algorithm,
             digits: items["digits"].flatMap { Int($0) } ?? 6,
-            period: items["period"].flatMap { Int($0) } ?? 30
+            period: items["period"].flatMap { Int($0) } ?? 30,
+            kind: kind,
+            // For counter-based links, `counter` is the value the first code uses.
+            counter: items["counter"].flatMap { UInt64($0) } ?? 0
         )
         return account.isValid ? account : nil
     }
