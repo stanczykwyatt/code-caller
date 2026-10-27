@@ -10,6 +10,7 @@ struct Shortcut: Codable, Equatable, Sendable {
     var key: String
 
     static let standard = Shortcut(keyCode: UInt32(kVK_ANSI_C), modifiers: UInt32(controlKey | shiftKey), key: "C")
+    static let authenticator = Shortcut(keyCode: UInt32(kVK_ANSI_A), modifiers: UInt32(controlKey | shiftKey), key: "A")
 
     init(keyCode: UInt32, modifiers: UInt32, key: String) {
         self.keyCode = keyCode

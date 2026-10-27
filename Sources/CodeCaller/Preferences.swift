@@ -10,6 +10,13 @@ final class Preferences {
     var shortcut: Shortcut {
         didSet { defaults.set(try? JSONEncoder().encode(shortcut), forKey: Key.shortcut) }
     }
+    var authenticatorShortcut: Shortcut {
+        didSet { defaults.set(try? JSONEncoder().encode(authenticatorShortcut), forKey: Key.authenticatorShortcut) }
+    }
+    /// How long the authenticator stays unlocked after Touch ID. Zero asks every time.
+    var vaultUnlockSeconds: Int {
+        didSet { defaults.set(vaultUnlockSeconds, forKey: Key.vaultUnlockSeconds) }
+    }
     var lookbackMinutes: Int {
         didSet { defaults.set(lookbackMinutes, forKey: Key.lookbackMinutes) }
     }
@@ -45,6 +52,9 @@ final class Preferences {
             Key.readsMessages: false,
         ])
         shortcut = defaults.data(forKey: Key.shortcut).flatMap { try? JSONDecoder().decode(Shortcut.self, from: $0) } ?? .standard
+        authenticatorShortcut = defaults.data(forKey: Key.authenticatorShortcut)
+            .flatMap { try? JSONDecoder().decode(Shortcut.self, from: $0) } ?? .authenticator
+        vaultUnlockSeconds = defaults.integer(forKey: Key.vaultUnlockSeconds)
         lookbackMinutes = defaults.integer(forKey: Key.lookbackMinutes)
         clearClipboardSeconds = defaults.integer(forKey: Key.clearClipboardSeconds)
         showsCodeInNotice = defaults.bool(forKey: Key.showsCodeInNotice)
@@ -65,6 +75,8 @@ final class Preferences {
 
     private enum Key {
         static let shortcut = "shortcut"
+        static let authenticatorShortcut = "authenticatorShortcut"
+        static let vaultUnlockSeconds = "vaultUnlockSeconds"
         static let lookbackMinutes = "lookbackMinutes"
         static let clearClipboardSeconds = "clearClipboardSeconds"
         static let showsCodeInNotice = "showsCodeInNotice"

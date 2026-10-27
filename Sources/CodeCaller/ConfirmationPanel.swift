@@ -21,7 +21,7 @@ enum Confirmation {
 @MainActor
 final class ConfirmationPanel {
     private let panel = NSPanel(contentRect: .zero, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: true)
-    private let background = NSVisualEffectView()
+    private let background = NSVisualEffectView.panelBackground(cornerRadius: 14)
     private var hideTask: Task<Void, Never>?
 
     init() {
@@ -35,11 +35,6 @@ final class ConfirmationPanel {
         panel.isReleasedWhenClosed = false
         panel.sharingType = .none
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
-
-        background.material = .popover
-        background.blendingMode = .behindWindow
-        background.state = .active
-        background.maskImage = Self.roundedMask(radius: 14)
         panel.contentView = background
     }
 
@@ -50,20 +45,27 @@ final class ConfirmationPanel {
         background.subviews.forEach { $0.removeFromSuperview() }
         background.addSubview(content)
 
-        let screen = NSScreen.screens.first { NSMouseInRect(NSEvent.mouseLocation, $0.frame, false) } ?? NSScreen.main
-        if let visible = screen?.visibleFrame {
-            let origin = NSPoint(x: visible.midX - size.width / 2, y: visible.maxY - size.height - 12)
-            panel.setFrame(NSRect(origin: origin, size: size), display: true)
-        }
-        panel.invalidateShadow()
+        guard let visible = NSScreen.withMouse?.visibleFrame else { return }
+        let frame = NSRect(
+            origin: NSPoint(x: visible.midX - size.width / 2, y: visible.maxY - size.height - 12),
+            size: size
+        )
 
         hideTask?.cancel()
-        if !panel.isVisible {
+        if panel.isVisible {
+            panel.setFrame(frame, display: true)
+        } else {
+            // Slides down from under the menu bar as it fades in, unless Reduce Motion is on.
+            let slides = !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+            panel.setFrame(slides ? frame.offsetBy(dx: 0, dy: 10) : frame, display: true)
             panel.alphaValue = 0
             panel.orderFrontRegardless()
         }
+        panel.invalidateShadow()
         NSAnimationContext.runAnimationGroup { context in
-            context.duration = 0.15
+            context.duration = 0.2
+            context.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            panel.animator().setFrame(frame, display: true)
             panel.animator().alphaValue = 1
         }
 
@@ -85,18 +87,6 @@ final class ConfirmationPanel {
             guard !Task.isCancelled else { return }
             panel.orderOut(nil)
         }
-    }
-
-    private static func roundedMask(radius: CGFloat) -> NSImage {
-        let edge = radius * 2 + 1
-        let image = NSImage(size: NSSize(width: edge, height: edge), flipped: false) { rect in
-            NSColor.black.setFill()
-            NSBezierPath(roundedRect: rect, xRadius: radius, yRadius: radius).fill()
-            return true
-        }
-        image.capInsets = NSEdgeInsets(top: radius, left: radius, bottom: radius, right: radius)
-        image.resizingMode = .stretch
-        return image
     }
 }
 
@@ -168,7 +158,7 @@ extension Confirmation {
     var duration: Double? {
         switch self {
         case .looking: nil
-        case .copied: 2
+        case .copied: 2.5
         default: 3.5
         }
     }
