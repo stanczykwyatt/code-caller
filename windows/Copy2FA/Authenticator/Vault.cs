@@ -55,6 +55,35 @@ internal static class Vault
         }
     }
 
+    /// <summary>
+    /// Makes a change to the vault as it is on disk right now, then saves it. Working from the
+    /// saved copy means an older copy held by another window can never undo a change, such as
+    /// moving a counter-based account's counter on. The decrypted accounts are wiped afterwards.
+    /// </summary>
+    /// <returns>Whatever <paramref name="change"/> returns.</returns>
+    public static T Update<T>(Func<List<OtpAccount>, T> change)
+    {
+        var accounts = Load();
+        try
+        {
+            var result = change(accounts);
+            Save(accounts);
+            return result;
+        }
+        finally
+        {
+            Forget(accounts);
+        }
+    }
+
+    /// <summary>
+    /// Makes the next code for a counter-based account and saves its new counter before
+    /// returning the code, so a code is never handed out without the counter moving on.
+    /// Returns null if the account is gone.
+    /// </summary>
+    public static string? TakeNextHotpCode(Guid id) =>
+        Update(accounts => accounts.Find(account => account.Id == id && account.Kind == OtpKind.Hotp)?.TakeNextHotpCode());
+
     /// <summary>Wipes the secrets of accounts that are no longer needed in memory.</summary>
     public static void Forget(List<OtpAccount> accounts)
     {

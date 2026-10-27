@@ -139,6 +139,8 @@ public class NoticeTests
     public void CopiedFromTheAuthenticator()
     {
         Assert.Equal("Copied from Authenticator · GitHub · 18s left", Notice.CopiedFromAuthenticator("123456", "GitHub", 18).Detail);
+        // Counter-based codes don't run out, so there's no time left to show.
+        Assert.Equal("Copied from Authenticator · Legacy VPN", Notice.CopiedFromAuthenticator("123456", "Legacy VPN", null).Detail);
     }
 
     [Theory]

@@ -21,9 +21,16 @@ public sealed record Notice(string Title, string? Detail, NoticeSymbol Symbol, b
     public static Notice Copied(string? code, string source, string sender, DateTimeOffset received, DateTimeOffset now) =>
         new(code ?? "Code copied", CopiedDetail(code is not null, [source, sender, Age(received, now)]), NoticeSymbol.Copied, code is not null, Short);
 
-    /// <summary>A code copied from the authenticator, and how long it has left.</summary>
-    public static Notice CopiedFromAuthenticator(string? code, string account, int secondsLeft) =>
-        new(code ?? "Code copied", CopiedDetail(code is not null, [Authenticator, account, $"{secondsLeft}s left"]), NoticeSymbol.Copied, code is not null, Short);
+    /// <summary>
+    /// A code copied from the authenticator, and how long it has left. Counter-based codes
+    /// don't expire, so they have no time left to show.
+    /// </summary>
+    public static Notice CopiedFromAuthenticator(string? code, string account, int? secondsLeft) =>
+        new(code ?? "Code copied", CopiedDetail(code is not null, [Authenticator, account, secondsLeft is int seconds ? $"{seconds}s left" : ""]), NoticeSymbol.Copied, code is not null, Short);
+
+    /// <summary>A counter-based code wasn't copied, because its new counter couldn't be saved first.</summary>
+    public static Notice CounterNotSaved() =>
+        new("Code not copied", "Its counter couldn't be saved, so try again in a moment", NoticeSymbol.Warning, false, Long);
 
     public static Notice NothingFound(int minutes, IReadOnlyList<string> places) =>
         new("No code found", $"Nothing in the last {minutes} minutes of {JoinPlaces(places)}", NoticeSymbol.Search, false, Long);

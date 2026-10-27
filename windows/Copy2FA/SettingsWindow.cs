@@ -430,17 +430,17 @@ internal sealed class SettingsWindow : Form
     void Save(ImportResult result, bool fromFile)
     {
         if (accounts is null) return;
-        var added = OtpAccount.Merge(accounts, result.Accounts);
+        int added;
         try
         {
-            Vault.Save(accounts);
+            added = Vault.Update(saved => OtpAccount.Merge(saved, result.Accounts));
+            Reload();
         }
-        catch (Exception error) when (error is IOException or UnauthorizedAccessException or CryptographicException)
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or CryptographicException or FormatException)
         {
             authenticatorStatus.Text = "Your accounts couldn't be saved.";
             return;
         }
-        RefreshAccounts();
 
         var message = added switch
         {
@@ -451,8 +451,8 @@ internal sealed class SettingsWindow : Form
         if (result.Skipped > 0)
         {
             message += result.Skipped == 1
-                ? " Skipped 1 that doesn't use time-based codes or couldn't be read."
-                : $" Skipped {result.Skipped} that don't use time-based codes or couldn't be read.";
+                ? " Skipped 1 that uses a kind of code Copy 2FA doesn't support, such as Steam, or couldn't be read."
+                : $" Skipped {result.Skipped} that use a kind of code Copy 2FA doesn't support, such as Steam, or couldn't be read.";
         }
         if (fromFile) message += " The export file isn't encrypted, so delete it now that it's imported.";
         authenticatorStatus.Text = message;
@@ -470,17 +470,32 @@ internal sealed class SettingsWindow : Form
             MessageBoxDefaultButton.Button2);
         if (answer != DialogResult.Yes) return;
 
-        accounts.Remove(row.Account);
-        CryptographicOperations.ZeroMemory(row.Account.Secret);
+        var title = row.Account.Title;
+        var id = row.Account.Id;
         try
         {
-            Vault.Save(accounts);
-            authenticatorStatus.Text = $"Deleted {row.Account.Title}.";
+            Vault.Update(saved =>
+            {
+                var removed = saved.FindAll(account => account.Id == id);
+                saved.RemoveAll(account => account.Id == id);
+                Vault.Forget(removed);
+                return removed.Count;
+            });
+            Reload();
+            authenticatorStatus.Text = $"Deleted {title}.";
         }
-        catch (Exception error) when (error is IOException or UnauthorizedAccessException or CryptographicException)
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or CryptographicException or FormatException)
         {
             authenticatorStatus.Text = "Your accounts couldn't be saved.";
         }
+    }
+
+    /// <summary>Replaces the accounts on show with the vault as it's now saved.</summary>
+    void Reload()
+    {
+        var fresh = Vault.Load();
+        if (accounts is not null) Vault.Forget(accounts);
+        accounts = fresh;
         RefreshAccounts();
     }
 

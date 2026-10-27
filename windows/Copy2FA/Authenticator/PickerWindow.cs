@@ -245,9 +245,20 @@ internal sealed class PickerWindow : Form
     /// <summary>
     /// Draws the current code and a ring showing how long it has left, right-aligned in the
     /// row, and returns where they start. Codes turn orange in their last five seconds.
+    /// Counter-based accounts show "Next code" instead.
     /// </summary>
     int DrawCode(Graphics graphics, OtpAccount account, Rectangle bounds)
     {
+        if (account.Kind == OtpKind.Hotp)
+        {
+            // A counter-based code is only made when it's copied, since making one uses it up.
+            const TextFormatFlags labelFlags = TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine | TextFormatFlags.NoPadding;
+            var label = TextRenderer.MeasureText(graphics, "Next code", subtitleFont, Size.Empty, labelFlags);
+            var labelArea = new Rectangle(bounds.Right - label.Width, bounds.Y, label.Width, bounds.Height);
+            TextRenderer.DrawText(graphics, "Next code", subtitleFont, labelArea, theme.SecondaryText, labelFlags | TextFormatFlags.VerticalCenter);
+            return labelArea.Left;
+        }
+
         var now = DateTimeOffset.UtcNow;
         var remaining = Totp.SecondsRemaining(account.Period, now);
         var ending = remaining <= 5;
@@ -295,7 +306,10 @@ internal sealed class PickerWindow : Form
     {
         public OtpAccount Account { get; } = account;
 
-        public override string ToString() =>
-            Account.Subtitle.Length > 0 ? $"{Account.Title}, {Account.Subtitle}" : Account.Title;
+        public override string ToString()
+        {
+            var name = Account.Subtitle.Length > 0 ? $"{Account.Title}, {Account.Subtitle}" : Account.Title;
+            return Account.Kind == OtpKind.Hotp ? name + ", next code" : name;
+        }
     }
 }

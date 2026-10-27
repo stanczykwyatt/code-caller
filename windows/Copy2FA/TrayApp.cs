@@ -197,16 +197,37 @@ internal sealed class TrayApp : ApplicationContext, ISettingsHost
     void CopyFromAuthenticator(OtpAccount account)
     {
         var now = DateTimeOffset.UtcNow;
-        var code = Totp.Code(account, now);
+        string? code;
+        int? secondsLeft = null;
+        if (account.Kind == OtpKind.Hotp)
+        {
+            // The counter is saved before the code goes anywhere, so a code is never reused.
+            try
+            {
+                code = Vault.TakeNextHotpCode(account.Id);
+            }
+            catch (Exception error) when (error is IOException or UnauthorizedAccessException or CryptographicException or FormatException)
+            {
+                code = null;
+            }
+            if (code is null)
+            {
+                notice.Present(Notice.CounterNotSaved());
+                return;
+            }
+        }
+        else
+        {
+            code = Totp.Code(account, now);
+            secondsLeft = Totp.SecondsRemaining(account.Period, now);
+        }
+
         if (!clipboard.Copy(code, Settings.ClearClipboardSeconds))
         {
             notice.Present(Notice.CopyFailed());
             return;
         }
-        notice.Present(Notice.CopiedFromAuthenticator(
-            Settings.ShowCodeInNotice ? code : null,
-            account.Title,
-            Totp.SecondsRemaining(account.Period, now)));
+        notice.Present(Notice.CopiedFromAuthenticator(Settings.ShowCodeInNotice ? code : null, account.Title, secondsLeft));
     }
 
     public async Task<List<OtpAccount>?> UnlockAccountsAsync(IntPtr owner)
