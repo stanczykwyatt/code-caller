@@ -12,6 +12,13 @@ Codes from texts and authenticator apps.
 - **Promo codes:** codes like `SAVE20 at checkout` are no longer mistaken for verification codes.
 - **Settings:** split into General and Authenticator tabs. Mail and Messages can each be turned on or off.
 - **Testing:** stress tests feed thousands of damaged inputs through every parser.
+- **Hardening from a full code review:**
+  - The authenticator search closes as soon as the vault locks.
+  - "Every time" really asks every time.
+  - Links with apostrophes or commas import correctly, and junk setup keys are refused.
+  - Everyday texts like "zip code 94110" are no longer copied.
+  - Shortcuts can't take over ⌘C or ⌘V.
+  - Messages access is limited to its database files.
 
 ## 0.1.0 (2026-10-27)
 
