@@ -18,10 +18,18 @@ struct Shortcut: Codable, Equatable, Sendable {
         self.key = key
     }
 
-    /// Reads a shortcut from a key press. Needs ⌘, ⌃ or ⌥ so plain typing is never taken over.
+    /// Whether both use the same physical key and modifiers. The printed label is ignored,
+    /// since the same key is labeled differently on other keyboard layouts.
+    func conflicts(with other: Shortcut) -> Bool {
+        keyCode == other.keyCode && modifiers == other.modifiers
+    }
+
+    /// Reads a shortcut from a key press. Needs ⌃ or ⌥, or ⌘ together with ⇧, so plain typing
+    /// and everyday commands like ⌘C, ⌘V and ⌘Q are never taken over in every app.
     init?(event: NSEvent) {
         let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
-        guard !flags.isDisjoint(with: [.command, .control, .option]), let key = Self.label(for: event) else {
+        let isSafe = flags.contains(.control) || flags.contains(.option) || flags.isSuperset(of: [.command, .shift])
+        guard isSafe, let key = Self.label(for: event) else {
             return nil
         }
         var modifiers = 0
