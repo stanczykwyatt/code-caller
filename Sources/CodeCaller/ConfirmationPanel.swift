@@ -5,9 +5,12 @@ enum Confirmation {
     case looking
     /// `received` is nil for codes that weren't delivered, like ones from the authenticator.
     case copied(code: String?, sender: String, source: CodeSource, received: Date?)
-    case nothingFound(minutes: Int)
+    /// `places` names what was searched, like "Mail and Messages".
+    case nothingFound(minutes: Int, places: String)
     case needsMailAccess
+    case needsMessagesAccess
     case mailMissing
+    case noSources
     case failed
 }
 
@@ -136,7 +139,9 @@ extension Confirmation {
         case .copied(let code, _, _, _): code ?? "Code copied"
         case .nothingFound: "No code found"
         case .needsMailAccess: "Mail access is off"
+        case .needsMessagesAccess: "Messages access is off"
         case .mailMissing: "Mail isn't installed"
+        case .noSources: "Nowhere to look"
         case .failed: "Couldn't reach Mail"
         }
     }
@@ -146,9 +151,11 @@ extension Confirmation {
         case .looking: nil
         case .copied(let code, let sender, let source, let received):
             Self.copiedDetail(showsCode: code != nil, sender: sender, source: source, received: received)
-        case .nothingFound(let minutes): "Nothing in the last \(minutes) minutes of Mail"
+        case .nothingFound(let minutes, let places): "Nothing in the last \(minutes) minutes of \(places)"
         case .needsMailAccess: "Allow it in Code Caller Settings"
+        case .needsMessagesAccess: "Turn on Full Disk Access in Code Caller Settings"
         case .mailMissing: "Code Caller reads codes from Apple Mail"
+        case .noSources: "Turn on Mail or Messages in Code Caller Settings"
         case .failed: "Try again in a moment"
         }
     }
@@ -170,8 +177,8 @@ extension Confirmation {
         switch self {
         case .looking: "checkmark.circle.fill"
         case .copied(_, _, let source, _): source.symbol
-        case .nothingFound: "magnifyingglass"
-        case .needsMailAccess: "lock.fill"
+        case .nothingFound, .noSources: "magnifyingglass"
+        case .needsMailAccess, .needsMessagesAccess: "lock.fill"
         case .mailMissing: "envelope"
         case .failed: "exclamationmark.triangle.fill"
         }
@@ -180,7 +187,7 @@ extension Confirmation {
     fileprivate var tint: Color {
         switch self {
         case .copied(_, _, let source, _): source.tint
-        case .failed, .needsMailAccess: .orange
+        case .failed, .needsMailAccess, .needsMessagesAccess: .orange
         default: .secondary
         }
     }

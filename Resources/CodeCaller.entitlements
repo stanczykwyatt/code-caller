@@ -14,5 +14,10 @@
 	<array>
 		<string>com.apple.mail</string>
 	</array>
+	<!-- Read-only access to the Messages database. macOS also requires Full Disk Access, which the user turns on. -->
+	<key>com.apple.security.temporary-exception.files.home-relative-path.read-only</key>
+	<array>
+		<string>/Library/Messages/</string>
+	</array>
 </dict>
 </plist>

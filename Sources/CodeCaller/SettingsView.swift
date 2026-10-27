@@ -34,6 +34,33 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
             }
 
+            Section {
+                Toggle("Mail", isOn: $preferences.readsMail)
+                if preferences.readsMail {
+                    LabeledContent("Mail access") {
+                        MailAccessStatus(access: state.mailAccess, allow: actions.allowMailAccess)
+                    }
+                }
+                Toggle("Messages", isOn: $preferences.readsMessages)
+                if preferences.readsMessages {
+                    LabeledContent("Full Disk Access") {
+                        if state.canReadMessages {
+                            HStack(spacing: 4) {
+                                Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
+                                Text("Allowed")
+                            }
+                        } else {
+                            Button("Open System Settings…", action: actions.openFullDiskAccessSettings)
+                        }
+                    }
+                }
+            } header: {
+                Text("Look for codes in")
+            } footer: {
+                Text(messagesFooter)
+                    .foregroundStyle(.secondary)
+            }
+
             Section("Privacy") {
                 Picker("Clear clipboard after", selection: $preferences.clearClipboardSeconds) {
                     Text("30 seconds").tag(30)
@@ -45,9 +72,6 @@ struct SettingsView: View {
             }
 
             Section {
-                LabeledContent("Mail access") {
-                    MailAccessStatus(access: state.mailAccess, allow: actions.allowMailAccess)
-                }
                 Toggle("Open at login", isOn: Binding(get: { state.opensAtLogin }, set: { actions.setOpensAtLogin($0) }))
             }
 
@@ -62,6 +86,13 @@ struct SettingsView: View {
         .frame(width: 460)
         .fixedSize(horizontal: false, vertical: true)
         .onDisappear { actions.stopRecordingShortcut() }
+    }
+
+    private var messagesFooter: String {
+        guard preferences.readsMessages, !state.canReadMessages else {
+            return "Reading texts needs Full Disk Access. Code Caller's sandbox still keeps it out of everything except your Messages database."
+        }
+        return "In System Settings, click +, choose Code Caller and turn it on. Code Caller's sandbox still keeps it out of everything except your Messages database."
     }
 }
 
