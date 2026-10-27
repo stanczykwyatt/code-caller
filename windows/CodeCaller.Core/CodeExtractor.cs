@@ -29,12 +29,11 @@ public static class CodeExtractor
         var bestScore = int.MinValue;
         foreach (var (text, inSubject) in new[] { (subject, true), (body, false) })
         {
-            var context = new Context(
-                text,
-                inSubject,
-                Ranges(Patterns.Keyword, text),
-                Ranges(Patterns.Unrelated, text),
-                Ranges(Patterns.Date, text));
+            var unrelated = Ranges(Patterns.Unrelated, text);
+            // "Code" in "zip code" or "promo code" says nothing about a verification code.
+            var keywords = Ranges(Patterns.Keyword, text);
+            keywords.RemoveAll(keyword => unrelated.Exists(range => range.Intersects(keyword)));
+            var context = new Context(text, inSubject, keywords, unrelated, Ranges(Patterns.Date, text));
             foreach (var candidate in Candidates(text))
             {
                 var score = Score(candidate, context);
@@ -303,7 +302,9 @@ public static class CodeExtractor
             CodeWords + "|" + VerificationWords + "|"
             + Words("passwords?|passwort|kennwort|contrase[ñn]a|mot de passe|security"));
         public static readonly Regex Unrelated = Make(Words(
-            "orders?|invoice|receipt|tracking|shipment|ticket|case|promo(?:tion)?|coupon|discount|voucher|gift"
+            // Phrases come first so "zip code" matches as a whole rather than as "zip".
+            "(?:zip|postal|post|area|country|promo|promotional|discount|coupon|gift|referral|tracking|order|dress|source|qr|bar) ?codes?"
+            + "|orders?|invoice|receipt|tracking|shipment|ticket|case|promo(?:tion)?|coupon|discount|voucher|gift"
             + "|phone|tel|call|fax|zip|postal|booking|reservation|flight|ref(?:erence)?|ending in|card"
             + "|account number|amount|total|price|pedido|commande|bestellung|factura|rechnung"));
         public static readonly Regex Date = Make(Words(

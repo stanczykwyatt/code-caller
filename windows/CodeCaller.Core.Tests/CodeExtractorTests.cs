@@ -211,6 +211,36 @@ public class IgnoringNonCodes
     }
 }
 
+// Mirrors the email cases of the "Fixes from review" suite in the macOS tests.
+public class ReviewFixes
+{
+    [Theory]
+    [InlineData("Your login code", "Your login code is 482913. Shop now with the new app!")]
+    [InlineData("Verify your email", "Your verification code is 482913 \u2014 use it at checkout to finish signing up.")]
+    [InlineData("Sign in to Example", "Enter 482913 to sign in.\nDeals picked for you")]
+    public void NumberCodesNearShoppingWordsInEmails(string subject, string body)
+    {
+        Assert.Equal("482913", CodeExtractor.Code(subject, body));
+    }
+
+    [Theory]
+    [InlineData("Verify your address", "What's the zip code? It's 94110")]
+    [InlineData("Your account is verified", "Use promo code 2041 for free shipping.")]
+    [InlineData("Confirm your sign-in", "We noticed a sign-in near postal code 10115.")]
+    public void CodePhrasesAreNotCodeWords(string subject, string body)
+    {
+        Assert.Null(CodeExtractor.Code(subject, body));
+    }
+
+    [Fact]
+    public void RealCodeStillWinsNextToAPromoCode()
+    {
+        Assert.Equal("482913", CodeExtractor.Code(
+            subject: "Verify your email",
+            body: "Your verification code is 482913. Use promo code SAVE20 at checkout."));
+    }
+}
+
 public class ExtractorDetails
 {
     [Fact]
