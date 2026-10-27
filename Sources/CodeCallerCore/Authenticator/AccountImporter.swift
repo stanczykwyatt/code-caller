@@ -30,9 +30,10 @@ public enum ImportError: Error, Equatable {
 /// Turns exports from other apps into authenticator accounts.
 ///
 /// Reads QR code images, `otpauth://` links, Google Authenticator transfer codes,
-/// CSV exports from Apple Passwords, Safari, 1Password and Bitwarden, and JSON
-/// exports from Bitwarden, Aegis, 2FAS and andOTP. Only one-time password secrets
-/// are kept; passwords and anything else in an export are never stored.
+/// CSV exports from Apple Passwords, Safari, 1Password and Bitwarden, JSON exports
+/// from Bitwarden, Aegis, 2FAS and andOTP, and the `~/.2fa` file of the 2fa
+/// command-line tool. Only one-time password secrets are kept; passwords and
+/// anything else in an export are never stored.
 public enum AccountImporter {
     public static func accounts(from data: Data) throws -> ImportResult {
         if let codes = QRCodeReader.strings(in: data) {
@@ -55,6 +56,9 @@ public enum AccountImporter {
             return try JSONExports.accounts(from: Data(trimmed.utf8))
         }
         if let result = CSVExport.accounts(from: trimmed) {
+            return result
+        }
+        if let result = TwoFAFile.accounts(from: trimmed) {
             return result
         }
 
@@ -102,6 +106,46 @@ public enum QRCodeReader {
         let detector = CIDetector(ofType: CIDetectorTypeQRCode, context: nil, options: [CIDetectorAccuracy: CIDetectorAccuracyHigh])
         let features = detector?.features(in: CIImage(cgImage: image)) ?? []
         return features.compactMap { ($0 as? CIQRCodeFeature)?.messageString }
+    }
+}
+
+// MARK: - 2fa
+
+/// Reads the `~/.2fa` file kept by rsc/2fa, the command-line authenticator.
+///
+/// Each line is `name digits key` for a time-based key, followed by a 20-digit
+/// counter for a counter-based one. The counter is the last one 2fa used.
+enum TwoFAFile {
+    private static let line = try! NSRegularExpression(pattern: "^(\\S+) ([678]) ([A-Za-z2-7]+=*)(?: ([0-9]{20}))?$")
+
+    /// The accounts in the file, or nil if the text isn't in this format.
+    static func accounts(from text: String) -> ImportResult? {
+        let lines = text.components(separatedBy: .newlines)
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+        guard !lines.isEmpty else { return nil }
+
+        var result = ImportResult()
+        for line in lines {
+            let range = NSRange(line.startIndex..., in: line)
+            guard let match = Self.line.firstMatch(in: line, range: range) else { return nil }
+            func group(_ index: Int) -> String? {
+                Range(match.range(at: index), in: line).map { String(line[$0]) }
+            }
+            guard let name = group(1), let digits = group(2).flatMap({ Int($0) }),
+                  let secret = group(3).flatMap(Base32.decode) else {
+                result.skipped += 1
+                continue
+            }
+            let lastCounter = group(4).flatMap { UInt64($0) }
+            let account = OTPAccount(
+                issuer: name, name: "", secret: secret, digits: digits,
+                kind: lastCounter == nil ? .totp : .hotp,
+                counter: lastCounter.map { $0 &+ 1 } ?? 0
+            )
+            if account.isValid { result.accounts.append(account) } else { result.skipped += 1 }
+        }
+        return result
     }
 }
 
