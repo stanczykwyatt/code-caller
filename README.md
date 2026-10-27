@@ -108,9 +108,13 @@ Code Caller reads codes from verification and sign-in messages in English, Spani
 
 If it misses a code or copies the wrong one, please [open an issue](https://github.com/stanczykwyatt/code-caller/issues/new/choose). Remove the real code and personal details first.
 
+## Windows
+
+A Windows version is in preview. It reads codes from Outlook (classic) and Thunderbird, has the same authenticator behind Windows Hello, and uses the same code detection as the Mac app. It hasn't been tested on many PCs yet, so please [report anything odd](https://github.com/stanczykwyatt/code-caller/issues/new/choose). See the [Windows README](windows/README.md) to download or build it.
+
 ## Roadmap
 
-- A Windows version that reads Outlook and Thunderbird
+- Testing the Windows version on more PCs, then a full release
 - Codes from password managers' own apps, if they ever offer a local, offline way to share them
 - Signed and notarized releases
 
