@@ -3,7 +3,8 @@ import SwiftUI
 
 enum Confirmation {
     case looking
-    case copied(code: String?, sender: String, received: Date)
+    /// `received` is nil for codes that weren't delivered, like ones from the authenticator.
+    case copied(code: String?, sender: String, source: CodeSource, received: Date?)
     case nothingFound(minutes: Int)
     case needsMailAccess
     case mailMissing
@@ -132,7 +133,7 @@ extension Confirmation {
     var title: String {
         switch self {
         case .looking: "Looking for a code…"
-        case .copied(let code, _, _): code ?? "Code copied"
+        case .copied(let code, _, _, _): code ?? "Code copied"
         case .nothingFound: "No code found"
         case .needsMailAccess: "Mail access is off"
         case .mailMissing: "Mail isn't installed"
@@ -143,8 +144,8 @@ extension Confirmation {
     var detail: String? {
         switch self {
         case .looking: nil
-        case .copied(let code, let sender, let received):
-            "\(code == nil ? "From" : "Copied from") \(sender) · \(Self.age(of: received))"
+        case .copied(let code, let sender, let source, let received):
+            Self.copiedDetail(showsCode: code != nil, sender: sender, source: source, received: received)
         case .nothingFound(let minutes): "Nothing in the last \(minutes) minutes of Mail"
         case .needsMailAccess: "Allow it in Code Caller Settings"
         case .mailMissing: "Code Caller reads codes from Apple Mail"
@@ -153,7 +154,7 @@ extension Confirmation {
     }
 
     var showsCode: Bool {
-        if case .copied(.some, _, _) = self { true } else { false }
+        if case .copied(.some, _, _, _) = self { true } else { false }
     }
 
     /// How long the notice stays up. Nil while still looking.
@@ -167,7 +168,8 @@ extension Confirmation {
 
     fileprivate var symbol: String {
         switch self {
-        case .looking, .copied: "checkmark.circle.fill"
+        case .looking: "checkmark.circle.fill"
+        case .copied(_, _, let source, _): source.symbol
         case .nothingFound: "magnifyingglass"
         case .needsMailAccess: "lock.fill"
         case .mailMissing: "envelope"
@@ -177,10 +179,19 @@ extension Confirmation {
 
     fileprivate var tint: Color {
         switch self {
-        case .copied: .green
+        case .copied(_, _, let source, _): source.tint
         case .failed, .needsMailAccess: .orange
         default: .secondary
         }
+    }
+
+    /// For example "Copied from GitHub · Mail · just now".
+    private static func copiedDetail(showsCode: Bool, sender: String, source: CodeSource, received: Date?) -> String {
+        var parts = ["\(showsCode ? "Copied from" : "From") \(sender)", source.name]
+        if let received {
+            parts.append(age(of: received))
+        }
+        return parts.joined(separator: " · ")
     }
 
     static func age(of date: Date) -> String {

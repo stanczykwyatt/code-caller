@@ -1,9 +1,39 @@
 import CodeCallerCore
-import Foundation
+import SwiftUI
+
+/// Where a code came from, shown in the notice so it's clear which app it was read from.
+enum CodeSource: Sendable {
+    case mail, messages, authenticator
+
+    var name: String {
+        switch self {
+        case .mail: "Mail"
+        case .messages: "Messages"
+        case .authenticator: "Authenticator"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .mail: "envelope.fill"
+        case .messages: "message.fill"
+        case .authenticator: "lock.shield.fill"
+        }
+    }
+
+    var tint: Color {
+        switch self {
+        case .mail: .blue
+        case .messages: .green
+        case .authenticator: .indigo
+        }
+    }
+}
 
 struct FoundCode: Sendable {
     let code: String
     let sender: String
+    let source: CodeSource
     let received: Date
 }
 
@@ -42,7 +72,7 @@ enum CodeFinder {
     private static func newestCode(lookbackMinutes: Int) async throws -> FoundCode? {
         for message in try await MailReader.recentMessages(within: lookbackMinutes * 60) {
             if let code = CodeExtractor.code(subject: message.subject, body: message.body) {
-                return FoundCode(code: code, sender: SenderName.display(message.sender), received: message.received)
+                return FoundCode(code: code, sender: SenderName.display(message.sender), source: .mail, received: message.received)
             }
         }
         return nil

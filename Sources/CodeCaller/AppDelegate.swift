@@ -61,7 +61,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         case .found(let found):
             state.mailAccess = .allowed
             clipboard.copy(found.code, clearingAfter: preferences.clearClipboardSeconds)
-            notice = .copied(code: preferences.showsCodeInNotice ? found.code : nil, sender: found.sender, received: found.received)
+            notice = .copied(
+                code: preferences.showsCodeInNotice ? found.code : nil,
+                sender: found.sender,
+                source: found.source,
+                received: found.received
+            )
         case .nothingFound:
             state.mailAccess = .allowed
             notice = .nothingFound(minutes: lookbackMinutes)
