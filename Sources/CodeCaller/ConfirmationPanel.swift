@@ -9,6 +9,7 @@ enum Confirmation {
     case nothingFound(minutes: Int, places: String)
     case needsMailAccess
     case needsMessagesAccess
+    case messagesFailed
     case mailMissing
     case noSources
     case failed
@@ -130,6 +131,7 @@ extension Confirmation {
         case .nothingFound: "No code found"
         case .needsMailAccess: "Mail access is off"
         case .needsMessagesAccess: "Messages access is off"
+        case .messagesFailed: "Couldn't read Messages"
         case .mailMissing: "Mail isn't installed"
         case .noSources: "Nowhere to look"
         case .failed: "Couldn't reach Mail"
@@ -144,6 +146,7 @@ extension Confirmation {
         case .nothingFound(let minutes, let places): "Nothing in the last \(minutes) minutes of \(places)"
         case .needsMailAccess: "Allow it in Code Caller Settings"
         case .needsMessagesAccess: "Turn on Full Disk Access in Code Caller Settings"
+        case .messagesFailed: "A macOS update may have changed Messages. Check for a Code Caller update."
         case .mailMissing: "Code Caller reads codes from Apple Mail"
         case .noSources: "Turn on Mail or Messages in Code Caller Settings"
         case .failed: "Try again in a moment"
@@ -170,14 +173,14 @@ extension Confirmation {
         case .nothingFound, .noSources: "magnifyingglass"
         case .needsMailAccess, .needsMessagesAccess: "lock.fill"
         case .mailMissing: "envelope"
-        case .failed: "exclamationmark.triangle.fill"
+        case .failed, .messagesFailed: "exclamationmark.triangle.fill"
         }
     }
 
     fileprivate var tint: Color {
         switch self {
         case .copied(_, _, let source, _): source.tint
-        case .failed, .needsMailAccess, .needsMessagesAccess: .orange
+        case .failed, .messagesFailed, .needsMailAccess, .needsMessagesAccess: .orange
         default: .secondary
         }
     }

@@ -94,7 +94,7 @@ struct ReadingMessages {
     }
 
     @Test func missingDatabase() {
-        #expect(throws: MessagesStoreError.unreadable("There's no Messages database yet.")) {
+        #expect(throws: MessagesStoreError.missing) {
             try MessagesStore.messages(at: "/nonexistent/chat.db", since: .now)
         }
         #expect(MessagesStore.canRead("/nonexistent/chat.db") == false)
@@ -134,6 +134,37 @@ struct CodesInTexts {
         "Your total is $1999. Thanks for shopping with us!",
     ])
     func ignoresText(text: String) {
+        #expect(CodeExtractor.code(inText: text) == nil)
+    }
+}
+
+@Suite("Fixes from review")
+struct ReviewFixes {
+    @Test(arguments: [
+        "Your PayPal code is 482913. Use it to finish checkout.",
+        "Your Target login code is 482913. Never share it. Shop deals at Target.",
+        "Your Venmo code is 482913. Turn off your alerts in Settings.",
+        "Your verification code is 482913 for checkout",
+    ])
+    func numberCodesNearShoppingWordsInTexts(text: String) {
+        #expect(CodeExtractor.code(inText: text) == "482913")
+    }
+
+    @Test(arguments: [
+        ("Your login code", "Your login code is 482913. Shop now with the new app!"),
+        ("Verify your email", "Your verification code is 482913 — use it at checkout to finish signing up."),
+        ("Sign in to Example", "Enter 482913 to sign in.\nDeals picked for you"),
+    ])
+    func numberCodesNearShoppingWordsInEmails(subject: String, body: String) {
+        #expect(CodeExtractor.code(subject: subject, body: body) == "482913")
+    }
+
+    @Test(arguments: [
+        "I'll pin the address. Meet at 1830 Market St",
+        "What's the zip code? It's 94110",
+        "Use promo code 2041 for free shipping",
+    ])
+    func everydayTextsAreNotCodes(text: String) {
         #expect(CodeExtractor.code(inText: text) == nil)
     }
 }

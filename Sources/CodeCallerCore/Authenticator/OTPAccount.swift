@@ -34,9 +34,12 @@ public struct OTPAccount: Codable, Sendable, Equatable, Identifiable {
         self.period = period
     }
 
+    /// Real secrets are at least 64 bits. Shorter ones are usually junk, like "NONE" in a CSV column.
+    public static let minimumSecretLength = 8
+
     /// Whether the settings are ones every authenticator supports.
     public var isValid: Bool {
-        !secret.isEmpty && (6...8).contains(digits) && (1...300).contains(period)
+        secret.count >= Self.minimumSecretLength && (6...8).contains(digits) && (1...300).contains(period)
     }
 
     /// "GitHub (wyatt)", or whichever part is known.

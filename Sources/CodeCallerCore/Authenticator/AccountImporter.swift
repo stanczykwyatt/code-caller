@@ -37,10 +37,12 @@ public enum AccountImporter {
     public static func accounts(from data: Data) throws -> ImportResult {
         if let codes = QRCodeReader.strings(in: data) {
             guard !codes.isEmpty else { throw ImportError.noQRCode }
+            // A screenshot can include unrelated QR codes, like an App Store link. Those are ignored.
             var result = ImportResult()
             for code in codes {
-                result.add(try accounts(fromText: code))
+                if let found = try? accounts(fromText: code) { result.add(found) }
             }
+            guard !result.accounts.isEmpty || result.skipped > 0 else { throw ImportError.unrecognized }
             return result
         }
         guard let text = String(data: data, encoding: .utf8) else { throw ImportError.unrecognized }
@@ -57,26 +59,38 @@ public enum AccountImporter {
         }
 
         var result = ImportResult()
-        for link in links(in: trimmed, scheme: "otpauth-migration") {
-            guard let export = GoogleAuthenticatorExport.accounts(from: link) else { continue }
-            result.add(ImportResult(accounts: export.accounts, skipped: export.skipped))
-        }
-        for link in links(in: trimmed, scheme: "otpauth") {
-            if let account = OTPAuthURL.account(from: link) {
-                result.accounts.append(account)
-            } else {
-                result.skipped += 1
+        for line in trimmed.components(separatedBy: .newlines) {
+            for link in links(in: line) {
+                if link.lowercased().hasPrefix("otpauth-migration://") {
+                    if let export = GoogleAuthenticatorExport.accounts(from: link) {
+                        result.add(ImportResult(accounts: export.accounts, skipped: export.skipped))
+                    } else {
+                        result.skipped += 1
+                    }
+                } else if let account = OTPAuthURL.account(from: link) {
+                    result.accounts.append(account)
+                } else {
+                    result.skipped += 1
+                }
             }
         }
         guard !result.accounts.isEmpty || result.skipped > 0 else { throw ImportError.unrecognized }
         return result
     }
 
-    private static func links(in text: String, scheme: String) -> [String] {
-        let pattern = try! NSRegularExpression(pattern: "\(scheme)://[^\\s\"'<>,]+", options: [.caseInsensitive])
-        let range = NSRange(text.startIndex..., in: text)
-        return pattern.matches(in: text, range: range).compactMap { Range($0.range, in: text).map { String(text[$0]) } }
+    /// The links in one line of text. A line that's only a link is used whole, since labels
+    /// like "Macy's" or "Acme, Inc" contain characters that would otherwise end the link.
+    private static func links(in line: String) -> [String] {
+        let line = line.trimmingCharacters(in: .whitespaces)
+        let lowercased = line.lowercased()
+        if lowercased.hasPrefix("otpauth://") || lowercased.hasPrefix("otpauth-migration://") {
+            return [line]
+        }
+        let range = NSRange(line.startIndex..., in: line)
+        return embeddedLink.matches(in: line, range: range).compactMap { Range($0.range, in: line).map { String(line[$0]) } }
     }
+
+    private static let embeddedLink = try! NSRegularExpression(pattern: "otpauth(?:-migration)?://[^\\s\"<>]+", options: [.caseInsensitive])
 }
 
 public enum QRCodeReader {
@@ -123,7 +137,7 @@ enum CSVExport {
                 if account.issuer.isEmpty { account.issuer = issuer }
                 if account.name.isEmpty { account.name = value(userColumn) }
                 result.accounts.append(account)
-            } else if let key = Base32.decode(secret) {
+            } else if let key = Base32.decode(secret), OTPAccount(issuer: issuer, name: "", secret: key).isValid {
                 result.accounts.append(OTPAccount(issuer: issuer, name: value(userColumn), secret: key))
             } else {
                 result.skipped += 1
@@ -237,7 +251,7 @@ enum JSONExports {
                 if account.issuer.isEmpty { account.issuer = issuer }
                 if account.name.isEmpty { account.name = name }
                 result.accounts.append(account)
-            } else if let secret = Base32.decode(totp) {
+            } else if let secret = Base32.decode(totp), OTPAccount(issuer: issuer, name: name, secret: secret).isValid {
                 result.accounts.append(OTPAccount(issuer: issuer, name: name, secret: secret))
             } else {
                 result.skipped += 1  // For example "steam://", which needs its own code format.

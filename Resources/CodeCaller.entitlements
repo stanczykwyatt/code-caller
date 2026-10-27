@@ -14,10 +14,13 @@
 	<array>
 		<string>com.apple.mail</string>
 	</array>
-	<!-- Read-only access to the Messages database. macOS also requires Full Disk Access, which the user turns on. -->
+	<!-- Read-only access to the Messages database and its two journal files, and nothing else in
+	     ~/Library/Messages, such as attachments. macOS also requires Full Disk Access, which the user turns on. -->
 	<key>com.apple.security.temporary-exception.files.home-relative-path.read-only</key>
 	<array>
-		<string>/Library/Messages/</string>
+		<string>/Library/Messages/chat.db</string>
+		<string>/Library/Messages/chat.db-wal</string>
+		<string>/Library/Messages/chat.db-shm</string>
 	</array>
 	<!-- Read-only access to a file only after the user picks it to import authenticator accounts. -->
 	<key>com.apple.security.files.user-selected.read-only</key>

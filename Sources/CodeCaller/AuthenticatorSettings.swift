@@ -94,7 +94,10 @@ private struct AddAccountSheet: View {
     @State private var name = ""
     @State private var setupKey = ""
 
-    private var secret: Data? { Base32.decode(setupKey) }
+    /// The decoded key, if it's long enough to be a real one.
+    private var secret: Data? {
+        Base32.decode(setupKey).flatMap { $0.count >= OTPAccount.minimumSecretLength ? $0 : nil }
+    }
 
     var body: some View {
         VStack(alignment: .trailing, spacing: 0) {
@@ -107,7 +110,7 @@ private struct AddAccountSheet: View {
                     Text("Add an account")
                 } footer: {
                     if !setupKey.isEmpty && secret == nil {
-                        Text("Setup keys only use the letters A to Z and the numbers 2 to 7.")
+                        Text("That doesn't look like a setup key. They're usually 16 or 32 characters long, using only the letters A to Z and the numbers 2 to 7.")
                             .foregroundStyle(.red)
                     } else {
                         Text("Websites show a setup key next to the QR code, often behind \"Can't scan it?\".")
