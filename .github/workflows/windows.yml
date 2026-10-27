@@ -47,21 +47,21 @@ jobs:
           echo "No networking code."
 
       - name: Publish for x64
-        run: dotnet publish windows/CodeCaller --configuration Release --runtime win-x64 --self-contained -p:PublishSingleFile=true --output publish/win-x64
+        run: dotnet publish windows/Copy2FA --configuration Release --runtime win-x64 --self-contained -p:PublishSingleFile=true --output publish/win-x64
 
       - name: Publish for Arm64
-        run: dotnet publish windows/CodeCaller --configuration Release --runtime win-arm64 --self-contained -p:PublishSingleFile=true --output publish/win-arm64
+        run: dotnet publish windows/Copy2FA --configuration Release --runtime win-arm64 --self-contained -p:PublishSingleFile=true --output publish/win-arm64
 
       - name: Upload the x64 build
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: CodeCaller-win-x64
-          path: publish/win-x64/CodeCaller.exe
+          name: Copy2FA-win-x64
+          path: publish/win-x64/Copy2FA.exe
           if-no-files-found: error
 
       - name: Upload the Arm64 build
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: CodeCaller-win-arm64
-          path: publish/win-arm64/CodeCaller.exe
+          name: Copy2FA-win-arm64
+          path: publish/win-arm64/Copy2FA.exe
           if-no-files-found: error

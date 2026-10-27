@@ -56,7 +56,7 @@ For accounts that use an authenticator app, press **Ctrl+Shift+A**, confirm it's
 
 ## Install
 
-Download `CodeCaller.exe` for your PC (x64 for most PCs, Arm64 for Snapdragon and other Arm PCs), put it somewhere it can stay, such as a folder in your user directory, and run it. Nothing else needs to be installed.
+Download `Copy2FA.exe` for your PC (x64 for most PCs, Arm64 for Snapdragon and other Arm PCs), put it somewhere it can stay, such as a folder in your user directory, and run it. Nothing else needs to be installed.
 
 > **About the SmartScreen warning:** The first time you run Code Caller, Windows may say *Windows protected your PC*. That's not because anything is wrong with the app. Code Caller isn't code-signed, because a code signing certificate costs money and Code Caller hasn't bought one. The source is fully open, so you can read every line or build the app yourself. To run it, click **More info**, then **Run anyway**.
 
@@ -70,11 +70,11 @@ You need the [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) or l
 git clone https://github.com/stanczykwyatt/code-caller.git
 cd code-caller
 dotnet test windows
-dotnet publish windows/CodeCaller -c Release -r win-x64 -o publish
-.\publish\CodeCaller.exe
+dotnet publish windows/Copy2FA -c Release -r win-x64 -o publish
+.\publish\Copy2FA.exe
 ```
 
-Use `-r win-arm64` for an Arm PC. The result is one self-contained `CodeCaller.exe`.
+Use `-r win-arm64` for an Arm PC. The result is one self-contained `Copy2FA.exe`.
 
 The tests and the shared library build on macOS and Linux too, so code detection and importers can be worked on anywhere. The app itself compiles there as well, but only runs on Windows.
 
@@ -90,12 +90,12 @@ Open Settings from the tray icon to:
 - start Code Caller with Windows
 - unlock the authenticator with Windows Hello to import, add or delete accounts
 
-Settings are saved in `%LOCALAPPDATA%\CodeCaller\settings.json`, with nothing sensitive in them. Authenticator accounts are in `%LOCALAPPDATA%\CodeCaller\vault.bin`, encrypted. To remove Code Caller completely, turn off *Start with Windows*, quit it from the tray, then delete that folder and `CodeCaller.exe`.
+Settings are saved in `%LOCALAPPDATA%\Copy2FA\settings.json`, with nothing sensitive in them. Authenticator accounts are in `%LOCALAPPDATA%\Copy2FA\vault.bin`, encrypted. To remove Code Caller completely, turn off *Start with Windows*, quit it from the tray, then delete that folder and `Copy2FA.exe`.
 
 ## Project layout
 
 | | |
 |---|---|
-| `CodeCaller.Core` | Code detection, the mbox reader, TOTP, importers and settings. Cross-platform. |
-| `CodeCaller.Core.Tests` | xunit tests, including every macOS code detection test and the RFC 6238 test vectors. |
-| `CodeCaller` | The Windows tray app. |
+| `Copy2FA.Core` | Code detection, the mbox reader, TOTP, importers and settings. Cross-platform. |
+| `Copy2FA.Core.Tests` | xunit tests, including every macOS code detection test and the RFC 6238 test vectors. |
+| `Copy2FA` | The Windows tray app. |
