@@ -2,11 +2,16 @@ import AppKit
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    private let hotKey = HotKey()
+    private var shortcut = Shortcut.standard
     private var statusItem: NSStatusItem?
     private var copyItem: NSMenuItem?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         statusItem = makeStatusItem()
+        hotKey.onPress = { [weak self] in self?.copyLatestCode() }
+        hotKey.register(shortcut)
+        showShortcutInMenu()
     }
 
     @objc private func copyLatestCode() {
@@ -29,5 +34,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         copyItem = copy
         return item
+    }
+
+    private func showShortcutInMenu() {
+        let equivalent = shortcut.menuKeyEquivalent
+        copyItem?.keyEquivalent = equivalent?.key ?? ""
+        copyItem?.keyEquivalentModifierMask = equivalent?.modifiers ?? []
     }
 }
