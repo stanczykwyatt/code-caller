@@ -1,8 +1,8 @@
 import Foundation
 
-/// Finds one-time verification codes in the text of an email.
+/// Finds one-time verification codes in emails and text messages.
 ///
-/// A message has to read like a sign-in or verification email before any code
+/// A message has to read like a sign-in or verification message before any code
 /// is accepted. Every number or code-shaped word in it is then scored by its
 /// shape and by the words around it, and the best one wins if it scores high
 /// enough.
@@ -10,20 +10,34 @@ public enum CodeExtractor {
     /// The score a candidate needs before it counts as a code.
     static let threshold = 6
 
-    /// Returns the most likely verification code in a message, or nil if it doesn't contain one.
+    /// Returns the most likely verification code in an email, or nil if it doesn't contain one.
     public static func code(subject: String, body: String) -> String? {
         let subject = normalize(subject)
         let body = normalize(String(body.prefix(20_000)))
         guard isVerificationMessage(subject: subject, body: body) else { return nil }
+        return bestCode(in: [(subject, true), (body, false)])
+    }
 
+    /// Returns the most likely verification code in a text message, or nil if it doesn't contain one.
+    ///
+    /// Texts have no subject and are short, so a word like "code" or "PIN" is enough to
+    /// consider one. Promotions such as "use code SAVE20 at checkout" are still skipped.
+    public static func code(inText text: String) -> String? {
+        let text = normalize(String(text.prefix(2_000)))
+        guard contains(Patterns.verification, in: text) || contains(Patterns.codeWord, in: text) else { return nil }
+        return bestCode(in: [(text, false)])
+    }
+
+    private static func bestCode(in texts: [(String, Bool)]) -> String? {
         var best: (code: String, score: Int)?
-        for (text, inSubject) in [(subject, true), (body, false)] {
+        for (text, inSubject) in texts {
             let text = text as NSString
             let context = Context(
                 text: text,
                 inSubject: inSubject,
                 keywords: ranges(of: Patterns.keyword, in: text),
                 unrelated: ranges(of: Patterns.unrelated, in: text),
+                promotions: ranges(of: Patterns.promotion, in: text),
                 dates: ranges(of: Patterns.date, in: text)
             )
             for candidate in candidates(in: text) {
@@ -107,6 +121,7 @@ public enum CodeExtractor {
         let inSubject: Bool
         let keywords: [NSRange]
         let unrelated: [NSRange]
+        let promotions: [NSRange]
         let dates: [NSRange]
     }
 
@@ -123,6 +138,10 @@ public enum CodeExtractor {
         // An order number or a total sits closer to its own label than to the word "code".
         if let distance = distance(before: candidate.range, to: context.unrelated),
            distance <= 40, distance < (keywordBefore ?? .max) {
+            score -= 4
+        }
+        // Promo codes are followed by what they're for, like "at checkout" or "20% off".
+        if let distance = distance(after: candidate.range, to: context.promotions), distance <= 25 {
             score -= 4
         }
         if candidate.couldBeYear, let distance = distance(before: candidate.range, to: context.dates), distance <= 20 {
@@ -233,6 +252,9 @@ private enum Patterns {
             + "|phone|tel|call|fax|zip|postal|booking|reservation|flight|ref(?:erence)?|ending in|card"
             + "|account number|amount|total|price|pedido|commande|bestellung|factura|rechnung"
     ))
+    static let promotion = regex(words(
+        "at checkout|checkout|shop now|on sale|sale|deals?|coupon|discount|voucher|promo(?:tion)?|off your"
+    ) + "|[0-9]+ ?% off")
     static let date = regex(words(
         "jan|feb|mar|apr|may|jun|jul|aug|sept?|oct|nov|dec|january|february|march|april|june|july"
             + "|august|september|october|november|december|copyright"
