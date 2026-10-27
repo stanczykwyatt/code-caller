@@ -166,7 +166,9 @@ public class OtpAuthUriTests
 
     [Theory]
     [InlineData("https://example.com/?secret=JBSWY3DPEHPK3PXP")]
-    [InlineData("otpauth://hotp/Example?secret=JBSWY3DPEHPK3PXP&counter=0")]
+    [InlineData("otpauth://steam/Example?secret=JBSWY3DPEHPK3PXP")]
+    [InlineData("otpauth://hotp/Example?secret=JBSWY3DPEHPK3PXP&counter=-1")]
+    [InlineData("otpauth://hotp/Example?secret=JBSWY3DPEHPK3PXP&counter=next")]
     [InlineData("otpauth://totp/Example")]
     [InlineData("otpauth://totp/Example?secret=not-base32!")]
     [InlineData("otpauth://totp/Example?secret=JBSWY3DPEHPK3PXP&algorithm=MD5")]
@@ -198,5 +200,81 @@ public class CodeFormatTests
     public void GroupsCodesLikeTheMacPicker(string code, string expected)
     {
         Assert.Equal(expected, CodeFormat.Grouped(code));
+    }
+}
+
+public class HotpTests
+{
+    static readonly byte[] Secret = Encoding.ASCII.GetBytes("12345678901234567890");
+
+    /// <summary>RFC 4226, Appendix D.</summary>
+    [Theory]
+    [InlineData(0UL, "755224")]
+    [InlineData(1UL, "287082")]
+    [InlineData(2UL, "359152")]
+    [InlineData(3UL, "969429")]
+    [InlineData(4UL, "338314")]
+    [InlineData(5UL, "254676")]
+    [InlineData(6UL, "287922")]
+    [InlineData(7UL, "162583")]
+    [InlineData(8UL, "399871")]
+    [InlineData(9UL, "520489")]
+    public void Rfc4226TestVectors(ulong counter, string expected)
+    {
+        Assert.Equal(expected, Hotp.Code(Secret, counter));
+    }
+
+    [Fact]
+    public void EachCodeIsTakenOnce()
+    {
+        var account = OtpAccount.Create("Legacy", "vpn", Secret, kind: OtpKind.Hotp, counter: 3)!;
+        Assert.Equal("969429", account.TakeNextHotpCode());
+        Assert.Equal(4UL, account.Counter);
+        Assert.Equal("338314", account.TakeNextHotpCode());
+        Assert.Equal(5UL, account.Counter);
+    }
+
+    [Fact]
+    public void TimeBasedAccountsHaveNoNextCode()
+    {
+        var account = OtpAccount.Create("GitHub", "octocat", Secret)!;
+        Assert.Equal(OtpKind.Totp, account.Kind);
+        Assert.Throws<InvalidOperationException>(() => account.TakeNextHotpCode());
+    }
+
+    [Fact]
+    public void ReadsCounterBasedLinks()
+    {
+        var account = OtpAuthUri.Parse("otpauth://hotp/Legacy:vpn?secret=GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ&counter=5&issuer=Legacy");
+        Assert.Equal(OtpKind.Hotp, account.Kind);
+        Assert.Equal(("Legacy", "vpn"), (account.Issuer, account.Name));
+        // The link's counter is the one the next code comes from.
+        Assert.Equal(5UL, account.Counter);
+        Assert.Equal("254676", account.TakeNextHotpCode());
+    }
+
+    [Fact]
+    public void CounterDefaultsToZero()
+    {
+        Assert.Equal(0UL, OtpAuthUri.Parse("otpauth://hotp/Legacy:vpn?secret=GEZDGNBVGY3TQOJQ").Counter);
+    }
+
+    [Fact]
+    public void BuildsCounterBasedLinksThatReadBack()
+    {
+        var account = OtpAccount.Create("Legacy", "vpn", Secret, OtpAlgorithm.Sha256, 8, kind: OtpKind.Hotp, counter: 42)!;
+        var link = OtpAuthUri.Build(account);
+        Assert.StartsWith("otpauth://hotp/", link, StringComparison.Ordinal);
+        var copy = OtpAuthUri.Parse(link);
+        Assert.True(copy.IsSameAs(account));
+        Assert.Equal(42UL, copy.Counter);
+    }
+
+    [Fact]
+    public void KindsAreNeverDuplicatesOfEachOther()
+    {
+        var timeBased = OtpAccount.Create("Example", "a", Secret)!;
+        var counterBased = OtpAccount.Create("Example", "a", Secret, kind: OtpKind.Hotp)!;
+        Assert.False(timeBased.IsSameAs(counterBased));
     }
 }

@@ -2,6 +2,9 @@ namespace Copy2FA.Core.Authenticator;
 
 public enum OtpAlgorithm { Sha1, Sha256, Sha512 }
 
+/// <summary>Time-based codes (TOTP) change every period; counter-based codes (HOTP) change each time one is used.</summary>
+public enum OtpKind { Totp, Hotp }
+
 /// <summary>One account in the authenticator: who it's for and the secret its codes come from.</summary>
 public sealed class OtpAccount
 {
@@ -10,7 +13,7 @@ public sealed class OtpAccount
     /// <summary>Real secrets are at least 64 bits. Shorter ones are usually junk, like "NONE" in a CSV column.</summary>
     public const int MinSecretBytes = 8;
 
-    OtpAccount(Guid id, string issuer, string name, byte[] secret, OtpAlgorithm algorithm, int digits, int period)
+    OtpAccount(Guid id, string issuer, string name, byte[] secret, OtpAlgorithm algorithm, int digits, int period, OtpKind kind, ulong counter)
     {
         Id = id;
         Issuer = issuer;
@@ -19,6 +22,8 @@ public sealed class OtpAccount
         Algorithm = algorithm;
         Digits = digits;
         Period = period;
+        Kind = kind;
+        Counter = counter;
     }
 
     public Guid Id { get; }
@@ -29,8 +34,11 @@ public sealed class OtpAccount
     public byte[] Secret { get; }
     public OtpAlgorithm Algorithm { get; }
     public int Digits { get; }
-    /// <summary>How many seconds each code lasts.</summary>
+    /// <summary>How many seconds each code lasts. Only time-based accounts use it.</summary>
     public int Period { get; }
+    public OtpKind Kind { get; }
+    /// <summary>For counter-based accounts, the counter the next code is made from.</summary>
+    public ulong Counter { get; private set; }
 
     /// <summary>What to call the account in a list.</summary>
     public string Title => Issuer.Length > 0 ? Issuer : Name.Length > 0 ? Name : "Unnamed account";
@@ -46,19 +54,34 @@ public sealed class OtpAccount
         OtpAlgorithm algorithm = OtpAlgorithm.Sha1,
         int digits = 6,
         int period = 30,
-        Guid? id = null)
+        Guid? id = null,
+        OtpKind kind = OtpKind.Totp,
+        ulong counter = 0)
     {
         if (secret is null || secret.Length < MinSecretBytes) return null;
         if (digits is < MinDigits or > MaxDigits || period <= 0) return null;
-        return new OtpAccount(id ?? Guid.NewGuid(), Clean(issuer), Clean(name), secret, algorithm, digits, period);
+        return new OtpAccount(id ?? Guid.NewGuid(), Clean(issuer), Clean(name), secret, algorithm, digits, period, kind, counter);
+    }
+
+    /// <summary>
+    /// Makes the next counter-based code and moves the counter past it, so the same code is
+    /// never given out twice. Save the account before using the code.
+    /// </summary>
+    public string TakeNextHotpCode()
+    {
+        if (Kind != OtpKind.Hotp) throw new InvalidOperationException("Only counter-based accounts have a next code.");
+        var code = Hotp.Code(Secret, Counter, Digits, Algorithm);
+        Counter = checked(Counter + 1);
+        return code;
     }
 
     /// <summary>Whether two accounts make the same codes for the same service, so one is a duplicate.</summary>
     public bool IsSameAs(OtpAccount other) =>
         Secret.AsSpan().SequenceEqual(other.Secret)
+        && Kind == other.Kind
         && Algorithm == other.Algorithm
         && Digits == other.Digits
-        && Period == other.Period
+        && (Kind == OtpKind.Hotp || Period == other.Period)
         && string.Equals(Issuer, other.Issuer, StringComparison.OrdinalIgnoreCase)
         && string.Equals(Name, other.Name, StringComparison.OrdinalIgnoreCase);
 

@@ -31,9 +31,10 @@ public class ImporterTests
 
             otpauth://hotp/Legacy?secret=JBSWY3DPEHPK3PXP&counter=1
             """);
-        Assert.Equal(["GitHub", "ACME Co"], result.Accounts.Select(a => a.Issuer));
-        Assert.Equal(["octocat", "john.doe@email.com"], result.Accounts.Select(a => a.Name));
-        Assert.Equal(1, result.Skipped);
+        Assert.Equal(["GitHub", "ACME Co", ""], result.Accounts.Select(a => a.Issuer));
+        Assert.Equal(["octocat", "john.doe@email.com", "Legacy"], result.Accounts.Select(a => a.Name));
+        Assert.Equal((OtpKind.Hotp, 1UL), (result.Accounts[2].Kind, result.Accounts[2].Counter));
+        Assert.Equal(0, result.Skipped);
     }
 
     [Fact]
@@ -65,8 +66,8 @@ public class ImporterTests
     [Fact]
     public void PastedLinkThatCantBeUsedSaysWhy()
     {
-        var problem = Assert.Throws<ImportException>(() => AccountImporter.ImportLinks("otpauth://hotp/Legacy?secret=JBSWY3DPEHPK3PXP&counter=1"));
-        Assert.Contains("HOTP", problem.Message, StringComparison.Ordinal);
+        var problem = Assert.Throws<ImportException>(() => AccountImporter.ImportLinks("otpauth://steam/Steam?secret=JBSWY3DPEHPK3PXP"));
+        Assert.Contains("time-based or counter-based", problem.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -456,6 +457,33 @@ public class VaultFormatTests
             Assert.Equal(accounts[i].Id, copy[i].Id);
             Assert.True(copy[i].IsSameAs(accounts[i]));
         }
+    }
+
+    [Fact]
+    public void RoundTripsCounterBasedAccounts()
+    {
+        var account = OtpAccount.Create("Legacy", "vpn", "12345678901234567890"u8.ToArray(), kind: OtpKind.Hotp, counter: 7)!;
+        account.TakeNextHotpCode();
+        var copy = Assert.Single(VaultFormat.Deserialize(VaultFormat.Serialize([account])));
+        Assert.Equal((OtpKind.Hotp, 8UL), (copy.Kind, copy.Counter));
+    }
+
+    [Fact]
+    public void VaultsFromBeforeCountersAreTimeBased()
+    {
+        var old = VaultFormat.Deserialize("""
+            {"version":1,"accounts":[{"id":"0b8f6a4e-2f0c-4e5b-9d3a-6f1e2c3b4a5d","issuer":"GitHub","name":"octocat","secret":"JBSWY3DPEHPK3PXP","algorithm":"SHA1","digits":6,"period":30}]}
+            """u8.ToArray());
+        var account = Assert.Single(old);
+        Assert.Equal((OtpKind.Totp, 0UL), (account.Kind, account.Counter));
+    }
+
+    [Fact]
+    public void RejectsUnknownKinds()
+    {
+        Assert.Throws<FormatException>(() => VaultFormat.Deserialize("""
+            {"version":1,"accounts":[{"id":"0b8f6a4e-2f0c-4e5b-9d3a-6f1e2c3b4a5d","issuer":"x","name":"","secret":"JBSWY3DPEHPK3PXP","algorithm":"SHA1","digits":6,"period":30,"kind":"steam"}]}
+            """u8.ToArray()));
     }
 
     [Fact]

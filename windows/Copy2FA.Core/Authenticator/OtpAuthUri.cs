@@ -4,7 +4,7 @@ namespace Copy2FA.Core.Authenticator;
 
 /// <summary>
 /// Reads <c>otpauth://totp/Issuer:account?secret=...&amp;issuer=...</c> links, the format
-/// behind authenticator QR codes.
+/// behind authenticator QR codes, and their counter-based <c>otpauth://hotp/...&amp;counter=N</c> form.
 /// </summary>
 public static class OtpAuthUri
 {
@@ -37,14 +37,10 @@ public static class OtpAuthUri
 
         var slash = rest.IndexOf('/');
         var type = slash < 0 ? rest : rest[..slash];
-        if (type.Equals("hotp", StringComparison.OrdinalIgnoreCase))
-        {
-            throw new ImportException("Counter-based (HOTP) codes aren't supported, only time-based ones.");
-        }
-        if (!type.Equals("totp", StringComparison.OrdinalIgnoreCase))
-        {
-            throw new ImportException("That otpauth link isn't for a time-based code.");
-        }
+        OtpKind kind;
+        if (type.Equals("totp", StringComparison.OrdinalIgnoreCase)) kind = OtpKind.Totp;
+        else if (type.Equals("hotp", StringComparison.OrdinalIgnoreCase)) kind = OtpKind.Hotp;
+        else throw new ImportException("That otpauth link isn't for a time-based or counter-based code.");
 
         var afterType = slash < 0 ? "" : rest[(slash + 1)..];
         var question = afterType.IndexOf('?');
@@ -80,10 +76,18 @@ public static class OtpAuthUri
         {
             throw new ImportException("Codes need to be 6, 7 or 8 digits long.");
         }
-        var period = ReadNumber(parameters, "period", 30);
+        var period = kind == OtpKind.Totp ? ReadNumber(parameters, "period", 30) : 30;
         if (period <= 0) throw new ImportException("That otpauth link's period isn't valid.");
 
-        return OtpAccount.Create(issuer, account, secret, algorithm, digits, period)
+        // A counter-based link's counter is the one its next code is made from.
+        ulong counter = 0;
+        if (kind == OtpKind.Hotp && parameters.TryGetValue("counter", out var counterText) && counterText.Trim().Length > 0
+            && !ulong.TryParse(counterText.Trim(), NumberStyles.None, CultureInfo.InvariantCulture, out counter))
+        {
+            throw new ImportException("That otpauth link's counter isn't valid.");
+        }
+
+        return OtpAccount.Create(issuer, account, secret, algorithm, digits, period, kind: kind, counter: counter)
             ?? throw new ImportException("That otpauth link isn't valid.");
     }
 
@@ -93,11 +97,13 @@ public static class OtpAuthUri
         var label = account.Issuer.Length > 0
             ? Uri.EscapeDataString(account.Issuer) + ":" + Uri.EscapeDataString(account.Name)
             : Uri.EscapeDataString(account.Name);
-        var link = $"{Scheme}totp/{label}?secret={Base32.Encode(account.Secret)}";
+        var type = account.Kind == OtpKind.Hotp ? "hotp" : "totp";
+        var link = $"{Scheme}{type}/{label}?secret={Base32.Encode(account.Secret)}";
         if (account.Issuer.Length > 0) link += "&issuer=" + Uri.EscapeDataString(account.Issuer);
         if (account.Algorithm != OtpAlgorithm.Sha1) link += "&algorithm=" + OtpAccount.AlgorithmName(account.Algorithm);
         if (account.Digits != 6) link += "&digits=" + account.Digits.ToString(CultureInfo.InvariantCulture);
-        if (account.Period != 30) link += "&period=" + account.Period.ToString(CultureInfo.InvariantCulture);
+        if (account.Kind == OtpKind.Hotp) link += "&counter=" + account.Counter.ToString(CultureInfo.InvariantCulture);
+        else if (account.Period != 30) link += "&period=" + account.Period.ToString(CultureInfo.InvariantCulture);
         return link;
     }
 

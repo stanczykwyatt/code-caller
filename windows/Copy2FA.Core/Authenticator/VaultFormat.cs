@@ -30,6 +30,8 @@ public static class VaultFormat
                 writer.WriteString("algorithm", OtpAccount.AlgorithmName(account.Algorithm));
                 writer.WriteNumber("digits", account.Digits);
                 writer.WriteNumber("period", account.Period);
+                writer.WriteString("kind", account.Kind == OtpKind.Hotp ? "hotp" : "totp");
+                writer.WriteNumber("counter", account.Counter);
                 writer.WriteEndObject();
             }
             writer.WriteEndArray();
@@ -58,6 +60,14 @@ public static class VaultFormat
                 {
                     throw new FormatException("Unknown algorithm.");
                 }
+                // Vaults saved before counter-based accounts existed have neither field: those are all time-based.
+                var kind = item.TryGetProperty("kind", out var kindValue) ? kindValue.GetString() switch
+                {
+                    "totp" => OtpKind.Totp,
+                    "hotp" => OtpKind.Hotp,
+                    _ => throw new FormatException("Unknown kind of account."),
+                } : OtpKind.Totp;
+                var counter = item.TryGetProperty("counter", out var counterValue) ? counterValue.GetUInt64() : 0;
                 var account = OtpAccount.Create(
                     item.GetProperty("issuer").GetString(),
                     item.GetProperty("name").GetString(),
@@ -65,7 +75,9 @@ public static class VaultFormat
                     algorithm,
                     item.GetProperty("digits").GetInt32(),
                     item.GetProperty("period").GetInt32(),
-                    item.GetProperty("id").GetGuid()) ?? throw new FormatException("Invalid account.");
+                    item.GetProperty("id").GetGuid(),
+                    kind,
+                    counter) ?? throw new FormatException("Invalid account.");
                 accounts.Add(account);
             }
             return accounts;
