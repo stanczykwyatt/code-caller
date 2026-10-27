@@ -1,0 +1,37 @@
+name: Missed or wrong code
+description: Code Caller didn't find a code, or copied the wrong one.
+labels: [code detection]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Replace the real code and any personal details before posting.** Swap the code for another number of the same length, for example 482913.
+  - type: input
+    id: sender
+    attributes:
+      label: Who sent the email?
+      placeholder: GitHub, Google, your bank…
+    validations:
+      required: true
+  - type: input
+    id: subject
+    attributes:
+      label: Subject line
+    validations:
+      required: true
+  - type: textarea
+    id: body
+    attributes:
+      label: Text around the code
+      description: A few lines before and after the code are usually enough.
+    validations:
+      required: true
+  - type: dropdown
+    id: result
+    attributes:
+      label: What happened?
+      options:
+        - No code was found
+        - The wrong number was copied
+    validations:
+      required: true
