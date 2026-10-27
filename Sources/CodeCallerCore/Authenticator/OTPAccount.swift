@@ -51,6 +51,9 @@ public struct OTPAccount: Codable, Sendable, Equatable, Identifiable {
 
     /// The code that's valid at `date`, per RFC 6238.
     public func code(at date: Date = .now) -> String {
+        // Imports only create valid accounts, but stored settings are clamped so damaged data can't crash.
+        let digits = min(max(self.digits, 1), 9)
+        let period = max(self.period, 1)
         let counter = UInt64(max(0, date.timeIntervalSince1970) / Double(period))
         var bigEndian = counter.bigEndian
         let message = Data(bytes: &bigEndian, count: 8)
@@ -65,15 +68,15 @@ public struct OTPAccount: Codable, Sendable, Equatable, Identifiable {
             | (UInt32(mac[offset + 1]) << 16)
             | (UInt32(mac[offset + 2]) << 8)
             | UInt32(mac[offset + 3])
-        let modulus = (0..<digits).reduce(UInt32(1)) { result, _ in result &* 10 }
-        let value = digits >= 10 ? truncated : truncated % modulus
-        let text = String(value)
+        let modulus = (0..<digits).reduce(UInt32(1)) { result, _ in result * 10 }
+        let text = String(truncated % modulus)
         return String(repeating: "0", count: max(0, digits - text.count)) + text
     }
 
     /// Seconds until the current code changes.
     public func secondsRemaining(at date: Date = .now) -> Int {
-        period - Int(max(0, date.timeIntervalSince1970)) % period
+        let period = max(self.period, 1)
+        return period - Int(max(0, date.timeIntervalSince1970)) % period
     }
 
     /// Whether this is the same account as `other`, so imports don't add duplicates.
