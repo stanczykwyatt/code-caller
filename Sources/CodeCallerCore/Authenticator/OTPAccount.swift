@@ -11,7 +11,14 @@ public enum OTPAlgorithm: String, Codable, Sendable, CaseIterable {
     }
 }
 
-/// A time-based one-time password account, the kind authenticator apps hold.
+public enum OTPKind: String, Codable, Sendable {
+    /// A new code every `period` seconds, the kind almost every website uses.
+    case totp
+    /// A new code each time one is used, tracked by a counter.
+    case hotp
+}
+
+/// A one-time password account, the kind authenticator apps hold.
 public struct OTPAccount: Codable, Sendable, Equatable, Identifiable {
     public var id: UUID
     public var issuer: String
@@ -20,10 +27,14 @@ public struct OTPAccount: Codable, Sendable, Equatable, Identifiable {
     public var algorithm: OTPAlgorithm
     public var digits: Int
     public var period: Int
+    public var kind: OTPKind
+    /// For counter-based accounts, the counter the next code uses.
+    public var counter: UInt64
 
     public init(
         id: UUID = UUID(), issuer: String, name: String, secret: Data,
-        algorithm: OTPAlgorithm = .sha1, digits: Int = 6, period: Int = 30
+        algorithm: OTPAlgorithm = .sha1, digits: Int = 6, period: Int = 30,
+        kind: OTPKind = .totp, counter: UInt64 = 0
     ) {
         self.id = id
         self.issuer = issuer.trimmingCharacters(in: .whitespaces)
@@ -32,6 +43,22 @@ public struct OTPAccount: Codable, Sendable, Equatable, Identifiable {
         self.algorithm = algorithm
         self.digits = digits
         self.period = period
+        self.kind = kind
+        self.counter = counter
+    }
+
+    /// Accounts saved before counter-based codes were supported have no kind or counter.
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        issuer = try container.decode(String.self, forKey: .issuer)
+        name = try container.decode(String.self, forKey: .name)
+        secret = try container.decode(Data.self, forKey: .secret)
+        algorithm = try container.decode(OTPAlgorithm.self, forKey: .algorithm)
+        digits = try container.decode(Int.self, forKey: .digits)
+        period = try container.decode(Int.self, forKey: .period)
+        kind = try container.decodeIfPresent(OTPKind.self, forKey: .kind) ?? .totp
+        counter = try container.decodeIfPresent(UInt64.self, forKey: .counter) ?? 0
     }
 
     /// Real secrets are at least 64 bits. Shorter ones are usually junk, like "NONE" in a CSV column.
@@ -52,12 +79,23 @@ public struct OTPAccount: Codable, Sendable, Equatable, Identifiable {
         }
     }
 
-    /// The code that's valid at `date`, per RFC 6238.
+    /// The time-based code that's valid at `date`, per RFC 6238.
     public func code(at date: Date = .now) -> String {
+        let period = max(self.period, 1)
+        return code(forCounter: UInt64(max(0, date.timeIntervalSince1970) / Double(period)))
+    }
+
+    /// The code a counter-based account gives next, and the account with its counter moved on.
+    public func usingNextCode() -> (code: String, account: OTPAccount) {
+        var account = self
+        account.counter &+= 1
+        return (code(forCounter: counter), account)
+    }
+
+    /// The code for one counter value, per RFC 4226. Time-based codes use the time as the counter.
+    public func code(forCounter counter: UInt64) -> String {
         // Imports only create valid accounts, but stored settings are clamped so damaged data can't crash.
         let digits = min(max(self.digits, 1), 9)
-        let period = max(self.period, 1)
-        let counter = UInt64(max(0, date.timeIntervalSince1970) / Double(period))
         var bigEndian = counter.bigEndian
         let message = Data(bytes: &bigEndian, count: 8)
         let key = SymmetricKey(data: secret)
