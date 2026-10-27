@@ -22,7 +22,7 @@ internal interface ISettingsHost
     Task<List<OtpAccount>?> UnlockAccountsAsync(IntPtr owner);
 }
 
-/// <summary>Code Caller's settings. Changes apply and save straight away.</summary>
+/// <summary>Copy 2FA's settings. Changes apply and save straight away.</summary>
 internal sealed class SettingsWindow : Form
 {
     const long MaxImportBytes = 20 * 1024 * 1024;
@@ -45,7 +45,7 @@ internal sealed class SettingsWindow : Form
         this.host = host;
         var settings = host.Settings;
 
-        Text = "Code Caller Settings";
+        Text = "Copy 2FA Settings";
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;
@@ -115,7 +115,7 @@ internal sealed class SettingsWindow : Form
 
         var footer = new Label
         {
-            Text = "Code Caller has no internet access. It only reads your mail when you press the shortcut, and never saves anything it reads.",
+            Text = "Copy 2FA has no internet access. It only reads your mail when you press the shortcut, and never saves anything it reads.",
             AutoSize = true,
             MaximumSize = new Size(490, 0),
             ForeColor = SystemColors.GrayText,
@@ -463,7 +463,7 @@ internal sealed class SettingsWindow : Form
         if (accounts is null || accountList.SelectedItem is not AccountRow row) return;
         var answer = MessageBox.Show(
             this,
-            $"Delete {row.Account.Title}? You won't get codes for it from Code Caller any more, so make sure you can still sign in another way.",
+            $"Delete {row.Account.Title}? You won't get codes for it from Copy 2FA any more, so make sure you can still sign in another way.",
             "Delete account",
             MessageBoxButtons.YesNo,
             MessageBoxIcon.Warning,

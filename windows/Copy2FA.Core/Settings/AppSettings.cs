@@ -4,7 +4,7 @@ using System.Text.Json.Serialization;
 namespace Copy2FA.Core.Settings;
 
 /// <summary>
-/// Everything Code Caller remembers between runs. None of it is sensitive: no codes,
+/// Everything Copy 2FA remembers between runs. None of it is sensitive: no codes,
 /// no messages, no account names. Starting with Windows lives in the registry instead.
 /// </summary>
 public sealed class AppSettings

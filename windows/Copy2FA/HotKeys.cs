@@ -4,7 +4,7 @@ namespace Copy2FA;
 
 /// <summary>
 /// Global shortcuts through RegisterHotKey. Windows only reports the registered key
-/// combinations, so Code Caller never sees anything else you type.
+/// combinations, so Copy 2FA never sees anything else you type.
 /// </summary>
 internal sealed class HotKeys : NativeWindow, IDisposable
 {
@@ -16,7 +16,7 @@ internal sealed class HotKeys : NativeWindow, IDisposable
     public HotKeys()
     {
         // An invisible window that only exists to receive WM_HOTKEY. It also owns the clipboard.
-        CreateHandle(new CreateParams { Caption = "Code Caller" });
+        CreateHandle(new CreateParams { Caption = "Copy 2FA" });
     }
 
     public event Action<int>? Pressed;

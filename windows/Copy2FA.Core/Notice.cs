@@ -29,10 +29,10 @@ public sealed record Notice(string Title, string? Detail, NoticeSymbol Symbol, b
         new("No code found", $"Nothing in the last {minutes} minutes of {JoinPlaces(places)}", NoticeSymbol.Search, false, Long);
 
     public static Notice NoMailApps() =>
-        new("No mail app found", "Code Caller reads Outlook (classic) and Thunderbird", NoticeSymbol.Mail, false, Long);
+        new("No mail app found", "Copy 2FA reads Outlook (classic) and Thunderbird", NoticeSymbol.Mail, false, Long);
 
     public static Notice NowhereToLook() =>
-        new("Nowhere to look", "Turn on Outlook or Thunderbird in Code Caller Settings", NoticeSymbol.Search, false, Long);
+        new("Nowhere to look", "Turn on Outlook or Thunderbird in Copy 2FA Settings", NoticeSymbol.Search, false, Long);
 
     public static Notice ReadFailed(IReadOnlyList<string> places) =>
         new($"Couldn't read {JoinPlaces(places)}", "Try again in a moment", NoticeSymbol.Warning, false, Long);
@@ -44,7 +44,7 @@ public sealed record Notice(string Title, string? Detail, NoticeSymbol Symbol, b
         new("Shortcut unavailable", $"Another app is using {shortcut}. Pick a different one in Settings", NoticeSymbol.Warning, false, Long);
 
     public static Notice NoAccounts() =>
-        new("No accounts yet", "Add accounts in Code Caller Settings", NoticeSymbol.Lock, false, Long);
+        new("No accounts yet", "Add accounts in Copy 2FA Settings", NoticeSymbol.Lock, false, Long);
 
     public static Notice HelloUnavailable() =>
         new("Windows Hello is off", "Set up a PIN, face or fingerprint to use the authenticator", NoticeSymbol.Lock, false, Long);

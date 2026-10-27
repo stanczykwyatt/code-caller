@@ -14,7 +14,7 @@ namespace Copy2FA.Authenticator;
 internal static class Vault
 {
     /// <summary>Ties the encryption to this app, so another program calling DPAPI with no entropy can't read it.</summary>
-    static readonly byte[] Entropy = "Code Caller authenticator vault, version 1"u8.ToArray();
+    static readonly byte[] Entropy = "Copy 2FA authenticator vault, version 1"u8.ToArray();
 
     public static string FilePath =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Copy2FA", "vault.bin");

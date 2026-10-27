@@ -60,7 +60,7 @@ internal sealed class TrayApp : ApplicationContext, ISettingsHost
         trayIcon = new NotifyIcon
         {
             Icon = AppIcon.Load(SystemInformation.SmallIconSize),
-            Text = "Code Caller",
+            Text = "Copy 2FA",
             ContextMenuStrip = menu,
             Visible = true,
         };
@@ -89,8 +89,8 @@ internal sealed class TrayApp : ApplicationContext, ISettingsHost
             SaveSettings();
             trayIcon.ShowBalloonTip(
                 10_000,
-                "Code Caller is running",
-                $"Press {Settings.CopyShortcut} in any app to copy your newest code. Code Caller lives here in the system tray.",
+                "Copy 2FA is running",
+                $"Press {Settings.CopyShortcut} in any app to copy your newest code. Copy 2FA lives here in the system tray.",
                 ToolTipIcon.None);
         }
         else if (takenShortcuts.Contains(HotKeys.CopyLatestCode))
@@ -215,7 +215,7 @@ internal sealed class TrayApp : ApplicationContext, ISettingsHost
         isUnlocking = true;
         try
         {
-            switch (await WindowsHello.VerifyAsync(owner, "Unlock your Code Caller accounts"))
+            switch (await WindowsHello.VerifyAsync(owner, "Unlock your Copy 2FA accounts"))
             {
                 case HelloResult.Unavailable:
                     notice.Present(Notice.HelloUnavailable());
@@ -292,7 +292,7 @@ internal sealed class TrayApp : ApplicationContext, ISettingsHost
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {
-            // The change still applies until Code Caller quits.
+            // The change still applies until Copy 2FA quits.
         }
     }
 

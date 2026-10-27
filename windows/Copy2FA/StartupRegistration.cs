@@ -6,7 +6,7 @@ namespace Copy2FA;
 internal static class StartupRegistration
 {
     const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
-    const string ValueName = "Code Caller";
+    const string ValueName = "Copy 2FA";
 
     static string Command => $"\"{Environment.ProcessPath}\"";
 

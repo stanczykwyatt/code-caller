@@ -24,7 +24,7 @@ internal sealed class PickerWindow : Form
     {
         this.accounts = accounts;
 
-        Text = "Code Caller Authenticator";
+        Text = "Copy 2FA Authenticator";
         FormBorderStyle = FormBorderStyle.None;
         StartPosition = FormStartPosition.Manual;
         ShowInTaskbar = false;

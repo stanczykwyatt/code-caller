@@ -40,7 +40,7 @@ internal sealed class NoticeWindow : Form
         StartPosition = FormStartPosition.Manual;
         AutoScaleMode = AutoScaleMode.None;
         DoubleBuffered = true;
-        Text = "Code Caller";
+        Text = "Copy 2FA";
         AccessibleRole = AccessibleRole.Alert;
         animation.Tick += (_, _) => Animate();
         hideTimer.Tick += (_, _) =>

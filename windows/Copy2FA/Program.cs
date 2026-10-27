@@ -10,8 +10,8 @@ static class Program
         if (!isFirst)
         {
             MessageBox.Show(
-                "Code Caller is already running. You'll find it in the system tray, next to the clock.",
-                "Code Caller",
+                "Copy 2FA is already running. You'll find it in the system tray, next to the clock.",
+                "Copy 2FA",
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Information);
             return;

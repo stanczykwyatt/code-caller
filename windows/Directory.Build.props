@@ -11,7 +11,7 @@
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
     <Version>0.1.0</Version>
     <Authors>stanczykwyatt</Authors>
-    <Product>Code Caller</Product>
+    <Product>Copy 2FA</Product>
     <Copyright>Copyright (c) 2026 stanczykwyatt</Copyright>
   </PropertyGroup>
 </Project>

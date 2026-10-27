@@ -7,7 +7,7 @@ namespace Copy2FA.Mail;
 
 /// <summary>
 /// Reads classic Outlook through its COM object model, late bound so no Office
-/// libraries are needed to build or run Code Caller.
+/// libraries are needed to build or run Copy 2FA.
 /// </summary>
 /// <remarks>
 /// Every call only reads. Each COM object is released as soon as the search is done,

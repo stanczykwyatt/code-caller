@@ -41,7 +41,7 @@ jobs:
             | grep -v 'Using Remove="System.Net.Http"' || true)"
           if [ -n "$matches" ]; then
             echo "$matches"
-            echo "::error::Code Caller must never contain networking code."
+            echo "::error::Copy 2FA must never contain networking code."
             exit 1
           fi
           echo "No networking code."

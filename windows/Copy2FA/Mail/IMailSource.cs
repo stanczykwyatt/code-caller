@@ -2,7 +2,7 @@ using Copy2FA.Core.Mail;
 
 namespace Copy2FA.Mail;
 
-/// <summary>A mail app Code Caller can read recent messages from.</summary>
+/// <summary>A mail app Copy 2FA can read recent messages from.</summary>
 internal interface IMailSource
 {
     /// <summary>The app's name, as shown in notices.</summary>
