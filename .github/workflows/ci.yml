@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Run tests
+        run: swift test
+
+      - name: Build the app
+        run: scripts/build-app.sh
+
+      - name: Check the app has no network access
+        run: |
+          entitlements="$(codesign -d --entitlements - --xml "build/Code Caller.app" 2>/dev/null)"
+          if grep -q "com.apple.security.network" <<< "$entitlements"; then
+            echo "::error::Code Caller must never have a network entitlement."
+            exit 1
+          fi
+          echo "No network entitlements."
