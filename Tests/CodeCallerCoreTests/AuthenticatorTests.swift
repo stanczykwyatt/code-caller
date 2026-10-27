@@ -367,3 +367,44 @@ struct CounterBasedCodes {
         #expect(again == accounts)
     }
 }
+
+@Suite("Importing from rsc/2fa")
+struct ImportingFromTwoFA {
+    /// The same layout 2fa writes: `name digits key`, plus the last counter for counter-based keys.
+    static let file = """
+        github 6 JBSWY3DPEHPK3PXP
+        bank 8 JBSWY3DPEHPK3PXQ 00000000000000000004
+        work 7 JBSWY3DPEHPK3PXPJBSWY3DPEH======
+
+        """
+
+    @Test func readsEveryKey() throws {
+        let result = try AccountImporter.accounts(fromText: Self.file)
+        #expect(result.skipped == 0)
+        #expect(result.accounts.map(\.issuer) == ["github", "bank", "work"])
+        #expect(result.accounts.map(\.digits) == [6, 8, 7])
+        #expect(result.accounts.map(\.kind) == [.totp, .hotp, .totp])
+        #expect(result.accounts[2].secret.count == 16)
+    }
+
+    /// 2fa stores the counter it used last, so the next code uses one more.
+    @Test func counterContinuesWhere2faLeftOff() throws {
+        let bank = try #require(try AccountImporter.accounts(fromText: Self.file).accounts.first { $0.issuer == "bank" })
+        #expect(bank.counter == 5)
+    }
+
+    @Test(arguments: [
+        "github 6 JBSWY3DPEHPK3PXP\nThis line isn't a key",
+        "github 9 JBSWY3DPEHPK3PXP",
+        "github 6 JBSWY3DPEHPK3PXP 123",
+    ])
+    func otherTextIsNotMistakenForA2faFile(text: String) {
+        #expect(throws: ImportError.unrecognized) { try AccountImporter.accounts(fromText: text) }
+    }
+
+    @Test func shortKeysAreSkipped() throws {
+        let result = try AccountImporter.accounts(fromText: "github 6 JBSWY3DPEHPK3PXP\njunk 6 NONE")
+        #expect(result.accounts.count == 1)
+        #expect(result.skipped == 1)
+    }
+}
