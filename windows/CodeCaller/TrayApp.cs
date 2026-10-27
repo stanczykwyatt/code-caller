@@ -10,7 +10,7 @@ using Microsoft.Win32;
 namespace CodeCaller;
 
 /// <summary>The app itself: a tray icon, two global shortcuts, and the windows they open.</summary>
-internal sealed class TrayApp : ApplicationContext
+internal sealed class TrayApp : ApplicationContext, ISettingsHost
 {
     static string SettingsPath =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "CodeCaller", "settings.json");
@@ -29,6 +29,7 @@ internal sealed class TrayApp : ApplicationContext
     bool isLooking;
     bool isUnlocking;
     PickerWindow? picker;
+    SettingsWindow? settingsWindow;
 
     public TrayApp()
     {
@@ -51,6 +52,8 @@ internal sealed class TrayApp : ApplicationContext
         var menu = new ContextMenuStrip();
         menu.Items.Add(copyItem);
         menu.Items.Add(authenticatorItem);
+        menu.Items.Add(new ToolStripSeparator());
+        menu.Items.Add(new ToolStripMenuItem("Settings…", null, (_, _) => OpenSettings()));
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add(new ToolStripMenuItem("Quit", null, (_, _) => Quit()));
 
@@ -141,6 +144,7 @@ internal sealed class TrayApp : ApplicationContext
                 break;
             case LookupStatus.NowhereToLook:
                 notice.Present(Notice.NowhereToLook());
+                OpenSettings();
                 break;
             case LookupStatus.NoMailApps:
                 notice.Present(Notice.NoMailApps());
@@ -163,6 +167,7 @@ internal sealed class TrayApp : ApplicationContext
         if (!Vault.Exists)
         {
             notice.Present(Notice.NoAccounts());
+            OpenSettings();
             return;
         }
 
@@ -180,6 +185,7 @@ internal sealed class TrayApp : ApplicationContext
         if (accounts.Count == 0)
         {
             notice.Present(Notice.NoAccounts());
+            OpenSettings();
             return;
         }
         picker = new PickerWindow(accounts);
@@ -203,7 +209,7 @@ internal sealed class TrayApp : ApplicationContext
             Totp.SecondsRemaining(account.Period, now)));
     }
 
-    async Task<List<OtpAccount>?> UnlockAccountsAsync(IntPtr owner)
+    public async Task<List<OtpAccount>?> UnlockAccountsAsync(IntPtr owner)
     {
         if (isUnlocking) return null;
         isUnlocking = true;
@@ -247,9 +253,38 @@ internal sealed class TrayApp : ApplicationContext
         authenticatorItem.ShortcutKeyDisplayString = Settings.AuthenticatorShortcut.ToString();
     }
 
-    // The menu
+    public bool TrySetShortcut(int id, Shortcut shortcut)
+    {
+        var current = id == HotKeys.CopyLatestCode ? Settings.CopyShortcut : Settings.AuthenticatorShortcut;
+        if (!hotKeys.Register(id, shortcut))
+        {
+            // Put the old one back.
+            if (!hotKeys.Register(id, current)) takenShortcuts.Add(id);
+            return false;
+        }
+        if (id == HotKeys.CopyLatestCode) Settings.CopyShortcut = shortcut;
+        else Settings.AuthenticatorShortcut = shortcut;
+        takenShortcuts.Remove(id);
+        SaveSettings();
+        RegisterShortcuts();
+        return true;
+    }
 
-    void SaveSettings()
+    public bool IsShortcutTaken(int id) => takenShortcuts.Contains(id);
+
+    public void SetRecordingShortcut(bool recording)
+    {
+        // Frees the current shortcuts so they can be typed into the recorder.
+        if (recording) hotKeys.UnregisterAll();
+        else RegisterShortcuts();
+    }
+
+    // Settings and the menu
+
+    public bool IsOutlookAvailable => outlook.IsAvailable;
+    public bool IsThunderbirdAvailable => thunderbird.IsAvailable;
+
+    public void SaveSettings()
     {
         try
         {
@@ -259,6 +294,18 @@ internal sealed class TrayApp : ApplicationContext
         {
             // The change still applies until Code Caller quits.
         }
+    }
+
+    void OpenSettings()
+    {
+        if (settingsWindow is null || settingsWindow.IsDisposed)
+        {
+            settingsWindow = new SettingsWindow(this);
+            settingsWindow.FormClosed += (_, _) => settingsWindow = null;
+        }
+        settingsWindow.Show();
+        if (settingsWindow.WindowState == FormWindowState.Minimized) settingsWindow.WindowState = FormWindowState.Normal;
+        settingsWindow.Activate();
     }
 
     void ShowMenu()
@@ -281,6 +328,7 @@ internal sealed class TrayApp : ApplicationContext
         if (disposing)
         {
             SystemEvents.SessionEnding -= OnSessionEnding;
+            settingsWindow?.Close();
             picker?.Close();
             clipboard.Dispose();
             hotKeys.Dispose();
