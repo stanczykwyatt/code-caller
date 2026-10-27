@@ -6,6 +6,7 @@ import ServiceManagement
 @Observable
 final class AppState {
     var mailAccess = MailAccess.unknown
+    var canReadMessages = false
     var isRecordingShortcut = false
     var shortcutIsTaken = false
     var opensAtLogin = SMAppService.mainApp.status == .enabled
@@ -17,5 +18,6 @@ protocol SettingsActions: AnyObject {
     func startRecordingShortcut()
     func stopRecordingShortcut()
     func allowMailAccess()
+    func openFullDiskAccessSettings()
     func setOpensAtLogin(_ enabled: Bool)
 }

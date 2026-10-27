@@ -23,6 +23,13 @@ final class Preferences {
     var checksForNewMail: Bool {
         didSet { defaults.set(checksForNewMail, forKey: Key.checksForNewMail) }
     }
+    var readsMail: Bool {
+        didSet { defaults.set(readsMail, forKey: Key.readsMail) }
+    }
+    /// Off until turned on, since it needs Full Disk Access.
+    var readsMessages: Bool {
+        didSet { defaults.set(readsMessages, forKey: Key.readsMessages) }
+    }
     var hasSeenWelcome: Bool {
         didSet { defaults.set(hasSeenWelcome, forKey: Key.hasSeenWelcome) }
     }
@@ -34,13 +41,26 @@ final class Preferences {
             Key.clearClipboardSeconds: 60,
             Key.showsCodeInNotice: true,
             Key.checksForNewMail: true,
+            Key.readsMail: true,
+            Key.readsMessages: false,
         ])
         shortcut = defaults.data(forKey: Key.shortcut).flatMap { try? JSONDecoder().decode(Shortcut.self, from: $0) } ?? .standard
         lookbackMinutes = defaults.integer(forKey: Key.lookbackMinutes)
         clearClipboardSeconds = defaults.integer(forKey: Key.clearClipboardSeconds)
         showsCodeInNotice = defaults.bool(forKey: Key.showsCodeInNotice)
         checksForNewMail = defaults.bool(forKey: Key.checksForNewMail)
+        readsMail = defaults.bool(forKey: Key.readsMail)
+        readsMessages = defaults.bool(forKey: Key.readsMessages)
         hasSeenWelcome = defaults.bool(forKey: Key.hasSeenWelcome)
+    }
+
+    var lookupOptions: LookupOptions {
+        LookupOptions(
+            lookbackMinutes: lookbackMinutes,
+            readsMail: readsMail,
+            readsMessages: readsMessages,
+            checksForNewMail: checksForNewMail
+        )
     }
 
     private enum Key {
@@ -49,6 +69,8 @@ final class Preferences {
         static let clearClipboardSeconds = "clearClipboardSeconds"
         static let showsCodeInNotice = "showsCodeInNotice"
         static let checksForNewMail = "checksForNewMail"
+        static let readsMail = "readsMail"
+        static let readsMessages = "readsMessages"
         static let hasSeenWelcome = "hasSeenWelcome"
     }
 }

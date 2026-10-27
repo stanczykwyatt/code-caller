@@ -1,5 +1,6 @@
 import AppKit
 import Carbon.HIToolbox
+import CodeCallerCore
 import ServiceManagement
 import SwiftUI
 
@@ -29,6 +30,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidBecomeActive(_ notification: Notification) {
         // Picks up a change made in System Settings while Code Caller was in the background.
         refreshMailAccess()
+        state.canReadMessages = MessagesStore.canRead()
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -45,21 +47,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             try? await Task.sleep(for: .milliseconds(400))
             if !Task.isCancelled { confirmation.show(.looking) }
         }
-        let minutes = preferences.lookbackMinutes
-        let checksForNewMail = preferences.checksForNewMail
+        let options = preferences.lookupOptions
         lookup = Task {
-            let result = await CodeFinder.findLatest(lookbackMinutes: minutes, checkForNewMail: checksForNewMail)
+            let result = await CodeFinder.findLatest(options)
             progress.cancel()
-            show(result, lookbackMinutes: minutes)
+            show(result, options: options)
             lookup = nil
         }
     }
 
-    private func show(_ result: Lookup, lookbackMinutes: Int) {
+    private func show(_ result: Lookup, options: LookupOptions) {
         let notice: Confirmation
         switch result {
         case .found(let found):
-            state.mailAccess = .allowed
+            if found.source == .mail { state.mailAccess = .allowed }
             clipboard.copy(found.code, clearingAfter: preferences.clearClipboardSeconds)
             notice = .copied(
                 code: preferences.showsCodeInNotice ? found.code : nil,
@@ -68,14 +69,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 received: found.received
             )
         case .nothingFound:
-            state.mailAccess = .allowed
-            notice = .nothingFound(minutes: lookbackMinutes)
+            if options.readsMail { state.mailAccess = .allowed }
+            let places = [options.readsMail ? "Mail" : nil, options.readsMessages ? "Messages" : nil].compactMap { $0 }
+            notice = .nothingFound(minutes: options.lookbackMinutes, places: places.joined(separator: " and "))
         case .needsMailAccess:
             state.mailAccess = .denied
             notice = .needsMailAccess
             openSettings()
+        case .needsMessagesAccess:
+            state.canReadMessages = false
+            notice = .needsMessagesAccess
+            openSettings()
         case .mailMissing:
             notice = .mailMissing
+        case .noSources:
+            notice = .noSources
+            openSettings()
         case .failed:
             notice = .failed
         }
@@ -125,6 +134,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func openSettings() {
         refreshMailAccess()
+        state.canReadMessages = MessagesStore.canRead()
         settingsWindow = present(settingsWindow, title: "Code Caller Settings") {
             SettingsView(preferences: preferences, state: state, actions: self)
         }
@@ -223,6 +233,10 @@ extension AppDelegate: SettingsActions {
             }
             state.mailAccess = await MailReader.confirmAccess()
         }
+    }
+
+    func openFullDiskAccessSettings() {
+        NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles")!)
     }
 
     func setOpensAtLogin(_ enabled: Bool) {
