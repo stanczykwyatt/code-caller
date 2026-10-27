@@ -8,7 +8,7 @@ namespace Copy2FA.Core.Authenticator;
 /// <summary>
 /// Reads accounts from the files other authenticators and password managers export:
 /// lists of otpauth:// links, Google Authenticator transfer links, Safari or Apple
-/// Passwords CSV files, and unencrypted Bitwarden, Aegis and 2FAS JSON files.
+/// Passwords CSV files, and unencrypted Bitwarden, Aegis, 2FAS and andOTP JSON files.
 /// </summary>
 /// <remarks>
 /// Password manager exports hold every password you have. The file is read in place,
@@ -187,7 +187,11 @@ public static class AccountImporter
                 if (root.TryGetProperty("db", out _)) return Aegis(root);
                 if (root.TryGetProperty("services", out _) || root.TryGetProperty("servicesEncrypted", out _)) return TwoFas(root);
             }
-            throw new ImportException("That JSON file isn't an export from Bitwarden, Aegis or 2FAS.");
+            else if (root.ValueKind == JsonValueKind.Array && LooksLikeAndOtp(root))
+            {
+                return AndOtp(root);
+            }
+            throw new ImportException("That JSON file isn't an export from Bitwarden, Aegis, 2FAS or andOTP.");
         }
     }
 
@@ -284,6 +288,39 @@ public static class AccountImporter
             else accounts.Add(account);
         }
         return Finish(accounts, skipped, "2FAS");
+    }
+
+    /// <summary>andOTP's plain-text backup: a list of entries, each with its own secret and type.</summary>
+    static bool LooksLikeAndOtp(JsonElement root) =>
+        root.GetArrayLength() > 0
+        && root.EnumerateArray().All(entry => entry.ValueKind == JsonValueKind.Object && entry.TryGetProperty("secret", out _));
+
+    static ImportResult AndOtp(JsonElement root)
+    {
+        var accounts = new List<OtpAccount>();
+        var skipped = 0;
+        foreach (var entry in root.EnumerateArray())
+        {
+            var kind = Kind(Text(entry, "type") ?? "TOTP");
+            var counter = CounterOf(entry);
+            if (kind is null || counter is null || !OtpAccount.TryParseAlgorithm(Text(entry, "algorithm"), out var algorithm))
+            {
+                skipped++;
+                continue;
+            }
+            var account = OtpAccount.Create(
+                Text(entry, "issuer"),
+                Text(entry, "label"),
+                Base32.Decode(Text(entry, "secret") ?? ""),
+                algorithm,
+                Number(entry, "digits", 6),
+                Number(entry, "period", 30),
+                kind: kind.Value,
+                counter: counter.Value);
+            if (account is null) skipped++;
+            else accounts.Add(account);
+        }
+        return Finish(accounts, skipped, "andOTP");
     }
 
     static ImportResult Finish(List<OtpAccount> accounts, int skipped, string app)

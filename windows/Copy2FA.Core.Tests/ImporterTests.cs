@@ -423,6 +423,76 @@ public class ImporterTests
             """));
     }
 
+    // andOTP
+
+    [Fact]
+    public void AndOtpJson()
+    {
+        var result = Import("""
+            [
+              {
+                "secret": "JBSWY3DPEHPK3PXP",
+                "issuer": "GitHub",
+                "label": "octocat",
+                "digits": 6,
+                "type": "TOTP",
+                "algorithm": "SHA1",
+                "thumbnail": "Default",
+                "last_used": 1761580800000,
+                "used_frequency": 12,
+                "period": 30,
+                "tags": ["work"]
+              },
+              {
+                "secret": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ",
+                "issuer": "Legacy",
+                "label": "vpn",
+                "digits": 8,
+                "type": "HOTP",
+                "algorithm": "SHA256",
+                "thumbnail": "Default",
+                "last_used": 1761580800000,
+                "used_frequency": 3,
+                "counter": 4,
+                "tags": []
+              },
+              {
+                "secret": "JBSWY3DPEHPK3PXP",
+                "issuer": "Steam",
+                "label": "gamer",
+                "digits": 5,
+                "type": "STEAM",
+                "algorithm": "SHA1",
+                "period": 30,
+                "tags": []
+              },
+              {
+                "secret": "GEZDGNBVGY3TQOJQ",
+                "label": "Old entry without an issuer",
+                "digits": 6,
+                "type": "TOTP",
+                "algorithm": "SHA1",
+                "period": 60,
+                "tags": []
+              }
+            ]
+            """);
+        Assert.Equal(["GitHub", "Legacy", ""], result.Accounts.Select(a => a.Issuer));
+        Assert.Equal("Old entry without an issuer", result.Accounts[2].Title);
+        Assert.Equal(60, result.Accounts[2].Period);
+        Assert.Equal(1, result.Skipped);
+
+        var legacy = result.Accounts[1];
+        Assert.Equal((OtpKind.Hotp, 4UL, 8, OtpAlgorithm.Sha256), (legacy.Kind, legacy.Counter, legacy.Digits, legacy.Algorithm));
+    }
+
+    [Fact]
+    public void JsonListThatIsntAndOtp()
+    {
+        Assert.Throws<ImportException>(() => Import("""[ { "name": "not an export" } ]"""));
+        Assert.Throws<ImportException>(() => Import("[]"));
+    }
+
     [Fact]
     public void UnknownJson()
     {
