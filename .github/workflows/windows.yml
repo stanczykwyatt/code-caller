@@ -35,7 +35,12 @@ jobs:
         shell: bash
         run: |
           pattern='System\.Net|HttpClient|WebClient|WebRequest|Socket|Windows\.Networking|Windows\.Web\.'
-          if grep -rnE --include='*.cs' --include='*.csproj' --include='*.props' "$pattern" windows; then
+          # Only source files: bin and obj hold build output, not code anyone wrote. The one allowed
+          # match is the line in Directory.Build.targets that removes the SDK's default HTTP import.
+          matches="$(grep -rnE --include='*.cs' --include='*.csproj' --include='*.props' --include='*.targets' --exclude-dir=bin --exclude-dir=obj "$pattern" windows \
+            | grep -v 'Using Remove="System.Net.Http"' || true)"
+          if [ -n "$matches" ]; then
+            echo "$matches"
             echo "::error::Code Caller must never contain networking code."
             exit 1
           fi
