@@ -431,7 +431,7 @@ public class ImporterTests
     [Fact]
     public void SearchMatchesIssuerOrName()
     {
-        var account = OtpAccount.Create("GitHub", "octocat", [1, 2, 3])!;
+        var account = OtpAccount.Create("GitHub", "octocat", Base32.Decode("JBSWY3DPEHPK3PXP"))!;
         Assert.True(account.Matches(""));
         Assert.True(account.Matches("git"));
         Assert.True(account.Matches("OCTO"));
@@ -501,6 +501,48 @@ public class ImportReviewFixes
         var result = AccountImporter.ImportLinks("Scan this: <otpauth://totp/GitHub:wyatt?secret=JBSWY3DPEHPK3PXP>");
         var account = Assert.Single(result.Accounts);
         Assert.Equal(("GitHub", "wyatt"), (account.Issuer, account.Name));
+    }
+
+    [Fact]
+    public void JunkSecretsAreSkipped()
+    {
+        var problem = Assert.Throws<ImportException>(() => AccountImporter.Import(Encoding.UTF8.GetBytes("""
+            Title,URL,Username,Password,Notes,OTPAuth
+            Site,https://site.example,wyatt,pw,,NONE
+            """)));
+        Assert.Contains("could be read", problem.Message, StringComparison.Ordinal);
+        Assert.Null(OtpAccount.Create("", "", Base32.Decode("NONE")));
+    }
+
+    [Fact]
+    public void JunkSecretsBesideRealOnes()
+    {
+        var csv = AccountImporter.Import(Encoding.UTF8.GetBytes("""
+            Title,URL,Username,Password,Notes,OTPAuth
+            Site,https://site.example,wyatt,pw,,NONE
+            GitHub,https://github.com,octocat,pw,,JBSWY3DPEHPK3PXP
+            """));
+        Assert.Equal("GitHub", Assert.Single(csv.Accounts).Issuer);
+        Assert.Equal(1, csv.Skipped);
+
+        var bitwarden = AccountImporter.Import(Encoding.UTF8.GetBytes("""
+            {
+              "encrypted": false,
+              "items": [
+                { "type": 1, "name": "Site", "login": { "username": "wyatt", "password": "pw", "totp": "NONE" } },
+                { "type": 1, "name": "GitHub", "login": { "username": "octocat", "password": "pw", "totp": "JBSWY3DPEHPK3PXP" } }
+              ]
+            }
+            """));
+        Assert.Equal("GitHub", Assert.Single(bitwarden.Accounts).Issuer);
+        Assert.Equal(1, bitwarden.Skipped);
+    }
+
+    [Fact]
+    public void LinkWithAShortSecret()
+    {
+        var problem = Assert.Throws<ImportException>(() => OtpAuthUri.Parse("otpauth://totp/Site:wyatt?secret=NONE"));
+        Assert.Contains("too short", problem.Message, StringComparison.Ordinal);
     }
 
     [Fact]

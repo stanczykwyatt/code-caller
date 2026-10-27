@@ -7,6 +7,8 @@ public sealed class OtpAccount
 {
     public const int MinDigits = 6;
     public const int MaxDigits = 8;
+    /// <summary>Real secrets are at least 64 bits. Shorter ones are usually junk, like "NONE" in a CSV column.</summary>
+    public const int MinSecretBytes = 8;
 
     OtpAccount(Guid id, string issuer, string name, byte[] secret, OtpAlgorithm algorithm, int digits, int period)
     {
@@ -46,7 +48,7 @@ public sealed class OtpAccount
         int period = 30,
         Guid? id = null)
     {
-        if (secret is null || secret.Length == 0) return null;
+        if (secret is null || secret.Length < MinSecretBytes) return null;
         if (digits is < MinDigits or > MaxDigits || period <= 0) return null;
         return new OtpAccount(id ?? Guid.NewGuid(), Clean(issuer), Clean(name), secret, algorithm, digits, period);
     }

@@ -56,6 +56,7 @@ public static class OtpAuthUri
             throw new ImportException("That otpauth link has no secret.");
         }
         var secret = Base32.Decode(secretText) ?? throw new ImportException("That otpauth link's secret isn't valid Base32.");
+        if (secret.Length < OtpAccount.MinSecretBytes) throw new ImportException("That otpauth link's secret is too short to be real.");
 
         var labelIssuer = "";
         var account = label;
