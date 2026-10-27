@@ -4,7 +4,8 @@ namespace Copy2FA.Authenticator;
 
 /// <summary>
 /// A small search window for the authenticator: type to filter, arrow keys to move,
-/// Enter to copy, Esc to close. It closes as soon as it loses focus.
+/// Enter to copy, Esc to close. Each row shows its current code and how long it has
+/// left, like the macOS picker. It closes as soon as it loses focus.
 /// </summary>
 internal sealed class PickerWindow : Form
 {
@@ -15,8 +16,11 @@ internal sealed class PickerWindow : Form
     readonly TextBox search = new();
     readonly ListBox list = new();
     readonly Label empty = new();
+    // Redraws the rows often enough that codes change and countdowns tick on time.
+    readonly System.Windows.Forms.Timer clock = new() { Interval = 500 };
     Font titleFont = new("Segoe UI Semibold", 14f, GraphicsUnit.Pixel);
     Font subtitleFont = new("Segoe UI", 12f, GraphicsUnit.Pixel);
+    Font codeFont = new(Theme.CodeFont, 20f, FontStyle.Bold, GraphicsUnit.Pixel);
     bool closing;
 
     /// <param name="accounts">Decrypted accounts. The window wipes their secrets when it closes.</param>
@@ -32,7 +36,7 @@ internal sealed class PickerWindow : Form
         KeyPreview = true;
         AutoScaleMode = AutoScaleMode.Dpi;
         AutoScaleDimensions = new SizeF(96, 96);
-        ClientSize = new Size(420, 330);
+        ClientSize = new Size(460, 380);
         BackColor = theme.Background;
         ForeColor = theme.Text;
         Padding = new Padding(10);
@@ -59,6 +63,7 @@ internal sealed class PickerWindow : Form
         list.AccessibleName = "Accounts";
         list.DrawItem += DrawItem;
         list.DoubleClick += (_, _) => Choose();
+        clock.Tick += (_, _) => list.Invalidate();
 
         empty.Dock = DockStyle.Fill;
         empty.Text = "No accounts match";
@@ -102,6 +107,7 @@ internal sealed class PickerWindow : Form
         Native.SetForegroundWindow(Handle);
         Activate();
         search.Focus();
+        clock.Start();
     }
 
     protected override void OnDpiChanged(DpiChangedEventArgs e)
@@ -115,9 +121,11 @@ internal sealed class PickerWindow : Form
     {
         titleFont.Dispose();
         subtitleFont.Dispose();
+        codeFont.Dispose();
         titleFont = new Font("Segoe UI Semibold", LogicalToDeviceUnits(14), GraphicsUnit.Pixel);
         subtitleFont = new Font("Segoe UI", LogicalToDeviceUnits(12), GraphicsUnit.Pixel);
-        list.ItemHeight = LogicalToDeviceUnits(46);
+        codeFont = new Font(Theme.CodeFont, LogicalToDeviceUnits(20), FontStyle.Bold, GraphicsUnit.Pixel);
+        list.ItemHeight = LogicalToDeviceUnits(54);
         list.Invalidate();
     }
 
@@ -164,6 +172,7 @@ internal sealed class PickerWindow : Form
     protected override void OnFormClosed(FormClosedEventArgs e)
     {
         base.OnFormClosed(e);
+        clock.Stop();
         list.Items.Clear();
         Vault.Forget(accounts);
     }
@@ -206,34 +215,77 @@ internal sealed class PickerWindow : Form
     void DrawItem(object? sender, DrawItemEventArgs e)
     {
         if (e.Index < 0 || list.Items[e.Index] is not Entry entry) return;
+        var account = entry.Account;
+        var graphics = e.Graphics;
         var selected = (e.State & DrawItemState.Selected) != 0;
         using (var background = new SolidBrush(selected ? theme.Selection : theme.Background))
         {
-            e.Graphics.FillRectangle(background, e.Bounds);
+            graphics.FillRectangle(background, e.Bounds);
         }
 
-        var inset = LogicalToDeviceUnits(10);
+        var inset = LogicalToDeviceUnits(12);
         var bounds = Rectangle.Inflate(e.Bounds, -inset, 0);
+        var textRight = DrawCode(graphics, account, bounds) - LogicalToDeviceUnits(12);
+        var names = new Rectangle(bounds.X, bounds.Y, Math.Max(0, textRight - bounds.X), bounds.Height);
+
         const TextFormatFlags flags = TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine | TextFormatFlags.EndEllipsis | TextFormatFlags.Left;
-        var subtitle = entry.Account.Subtitle;
+        var subtitle = account.Subtitle;
         if (subtitle.Length == 0)
         {
-            TextRenderer.DrawText(e.Graphics, entry.Account.Title, titleFont, bounds, theme.Text, flags | TextFormatFlags.VerticalCenter);
+            TextRenderer.DrawText(graphics, account.Title, titleFont, names, theme.Text, flags | TextFormatFlags.VerticalCenter);
             return;
         }
-        var half = bounds.Height / 2;
-        var top = new Rectangle(bounds.X, bounds.Y + LogicalToDeviceUnits(4), bounds.Width, half - LogicalToDeviceUnits(2));
-        var bottom = new Rectangle(bounds.X, bounds.Y + half, bounds.Width, half - LogicalToDeviceUnits(4));
-        TextRenderer.DrawText(e.Graphics, entry.Account.Title, titleFont, top, theme.Text, flags | TextFormatFlags.Bottom);
-        TextRenderer.DrawText(e.Graphics, subtitle, subtitleFont, bottom, theme.SecondaryText, flags | TextFormatFlags.Top);
+        var half = names.Height / 2;
+        var top = new Rectangle(names.X, names.Y + LogicalToDeviceUnits(4), names.Width, half - LogicalToDeviceUnits(2));
+        var bottom = new Rectangle(names.X, names.Y + half, names.Width, half - LogicalToDeviceUnits(4));
+        TextRenderer.DrawText(graphics, account.Title, titleFont, top, theme.Text, flags | TextFormatFlags.Bottom);
+        TextRenderer.DrawText(graphics, subtitle, subtitleFont, bottom, theme.SecondaryText, flags | TextFormatFlags.Top);
+    }
+
+    /// <summary>
+    /// Draws the current code and a ring showing how long it has left, right-aligned in the
+    /// row, and returns where they start. Codes turn orange in their last five seconds.
+    /// </summary>
+    int DrawCode(Graphics graphics, OtpAccount account, Rectangle bounds)
+    {
+        var now = DateTimeOffset.UtcNow;
+        var remaining = Totp.SecondsRemaining(account.Period, now);
+        var ending = remaining <= 5;
+
+        var diameter = LogicalToDeviceUnits(18);
+        var stroke = 2.5f * DeviceDpi / 96f;
+        var ring = new Rectangle(bounds.Right - diameter, bounds.Y + (bounds.Height - diameter) / 2, diameter, diameter);
+        graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+        using (var track = new Pen(theme.Border, stroke))
+        {
+            graphics.DrawEllipse(track, ring);
+        }
+        using (var progress = new Pen(ending ? theme.Caution : theme.Accent, stroke)
+        {
+            StartCap = System.Drawing.Drawing2D.LineCap.Round,
+            EndCap = System.Drawing.Drawing2D.LineCap.Round,
+        })
+        {
+            graphics.DrawArc(progress, ring, -90, 360f * remaining / account.Period);
+        }
+
+        var code = CodeFormat.Grouped(Totp.Code(account, now));
+        const TextFormatFlags flags = TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine | TextFormatFlags.NoPadding;
+        var size = TextRenderer.MeasureText(graphics, code, codeFont, Size.Empty, flags);
+        var left = ring.Left - LogicalToDeviceUnits(10) - size.Width;
+        var area = new Rectangle(left, bounds.Y, size.Width, bounds.Height);
+        TextRenderer.DrawText(graphics, code, codeFont, area, ending ? theme.Caution : theme.Text, flags | TextFormatFlags.VerticalCenter);
+        return left;
     }
 
     protected override void Dispose(bool disposing)
     {
         if (disposing)
         {
+            clock.Dispose();
             titleFont.Dispose();
             subtitleFont.Dispose();
+            codeFont.Dispose();
         }
         base.Dispose(disposing);
     }

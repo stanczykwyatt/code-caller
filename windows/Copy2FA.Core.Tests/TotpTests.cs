@@ -187,3 +187,16 @@ public class OtpAuthUriTests
         Assert.True(copy.IsSameAs(account));
     }
 }
+
+public class CodeFormatTests
+{
+    [Theory]
+    [InlineData("482913", "482 913")]
+    [InlineData("4829135", "482 9135")]
+    [InlineData("48291370", "4829 1370")]
+    [InlineData("4829", "4829")]
+    public void GroupsCodesLikeTheMacPicker(string code, string expected)
+    {
+        Assert.Equal(expected, CodeFormat.Grouped(code));
+    }
+}

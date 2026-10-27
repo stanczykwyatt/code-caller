@@ -19,6 +19,7 @@ internal sealed class Theme
             Selection = Color.FromArgb(0x3D, 0x3D, 0x3D);
             Success = Color.FromArgb(0x6C, 0xCB, 0x5F);
             Caution = Color.FromArgb(0xFC, 0xB0, 0x45);
+            Accent = Color.FromArgb(0x60, 0xCD, 0xFF);
         }
         else
         {
@@ -30,6 +31,7 @@ internal sealed class Theme
             Selection = Color.FromArgb(0xE6, 0xE6, 0xE6);
             Success = Color.FromArgb(0x0F, 0x7B, 0x0F);
             Caution = Color.FromArgb(0x9D, 0x5D, 0x00);
+            Accent = Color.FromArgb(0x00, 0x5F, 0xB8);
         }
     }
 
@@ -42,6 +44,8 @@ internal sealed class Theme
     public Color Selection { get; }
     public Color Success { get; }
     public Color Caution { get; }
+    /// <summary>Windows 11's default accent blue, for the authenticator's countdown.</summary>
+    public Color Accent { get; }
 
     /// <summary>The theme apps are using right now. Read fresh each time, so a change takes effect at once.</summary>
     public static Theme Current => new(AppsUseDarkMode());
