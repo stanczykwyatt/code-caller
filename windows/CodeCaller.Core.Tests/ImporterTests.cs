@@ -472,3 +472,42 @@ public class VaultFormatTests
         Assert.Throws<FormatException>(() => VaultFormat.Deserialize("""{"version":1,"accounts":[{"issuer":"x"}]}"""u8.ToArray()));
     }
 }
+
+// Mirrors the "Import fixes from review" suite in the macOS tests, apart from QR codes.
+public class ImportReviewFixes
+{
+    [Theory]
+    [InlineData("otpauth://totp/Macy's:alice?secret=JBSWY3DPEHPK3PXP&issuer=Macy's", "Macy's")]
+    [InlineData("otpauth://totp/Acme,Inc:alice?secret=JBSWY3DPEHPK3PXP&issuer=Acme,Inc", "Acme,Inc")]
+    [InlineData("otpauth://totp/Acme Inc:alice?secret=JBSWY3DPEHPK3PXP", "Acme Inc")]
+    public void WholeLinksKeepTheirLabels(string link, string issuer)
+    {
+        foreach (var result in new[]
+        {
+            AccountImporter.ImportLinks(link),
+            AccountImporter.Import(Encoding.UTF8.GetBytes("# My accounts\r\n  " + link + "\t\r\n")),
+        })
+        {
+            var account = Assert.Single(result.Accounts);
+            Assert.Equal(issuer, account.Issuer);
+            Assert.Equal("alice", account.Name);
+            Assert.Equal(0, result.Skipped);
+        }
+    }
+
+    [Fact]
+    public void LinkInsideOtherText()
+    {
+        var result = AccountImporter.ImportLinks("Scan this: <otpauth://totp/GitHub:wyatt?secret=JBSWY3DPEHPK3PXP>");
+        var account = Assert.Single(result.Accounts);
+        Assert.Equal(("GitHub", "wyatt"), (account.Issuer, account.Name));
+    }
+
+    [Fact]
+    public void SeveralLinksOnOneLineOfText()
+    {
+        var result = AccountImporter.ImportLinks(
+            "first \"otpauth://totp/A:a?secret=JBSWY3DPEHPK3PXP\" then otpauth://totp/B:b?secret=GEZDGNBVGY3TQOJQ");
+        Assert.Equal(["A", "B"], result.Accounts.Select(account => account.Issuer));
+    }
+}

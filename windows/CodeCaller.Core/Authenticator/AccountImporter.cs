@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace CodeCaller.Core.Authenticator;
 
@@ -67,28 +68,26 @@ public static class AccountImporter
         var rest = data;
         while (!rest.IsEmpty)
         {
-            var start = rest.IndexOfAnyExcept(Separators);
-            if (start < 0) break;
-            rest = rest[start..];
-            var end = rest.IndexOfAny(Separators);
-            var token = end < 0 ? rest : rest[..end];
-            rest = end < 0 ? [] : rest[end..];
+            var end = rest.IndexOfAny((byte)'\r', (byte)'\n');
+            var line = end < 0 ? rest : rest[..end];
+            rest = end < 0 ? [] : rest[(end + 1)..];
+            // Lines without a link are never turned into text, so nothing else in the file is read.
+            if (IndexOfIgnoringCase(line, "otpauth"u8) < 0) continue;
 
-            var isLink = StartsWithIgnoringCase(token, "otpauth://"u8);
-            var isMigration = StartsWithIgnoringCase(token, "otpauth-migration://"u8);
-            if (!isLink && !isMigration) continue;
-            linksFound++;
-            var link = Encoding.UTF8.GetString(token);
-            try
+            foreach (var link in LinksIn(Encoding.UTF8.GetString(line)))
             {
-                results.Add(isLink
-                    ? new ImportResult([OtpAuthUri.Parse(link)], 0)
-                    : GoogleAuthenticatorExport.Parse(link));
-            }
-            catch (ImportException problem)
-            {
-                firstProblem ??= problem.Message;
-                results.Add(new ImportResult([], 1));
+                linksFound++;
+                try
+                {
+                    results.Add(GoogleAuthenticatorExport.IsMigrationLink(link)
+                        ? GoogleAuthenticatorExport.Parse(link)
+                        : new ImportResult([OtpAuthUri.Parse(link)], 0));
+                }
+                catch (ImportException problem)
+                {
+                    firstProblem ??= problem.Message;
+                    results.Add(new ImportResult([], 1));
+                }
             }
         }
 
@@ -98,18 +97,33 @@ public static class AccountImporter
         return combined;
     }
 
-    static ReadOnlySpan<byte> Separators => " \t\r\n\"'<>"u8;
+    static readonly Regex EmbeddedLink = new(@"otpauth(?:-migration)?://[^\s""<>]+", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
-    static bool StartsWithIgnoringCase(ReadOnlySpan<byte> text, ReadOnlySpan<byte> prefix)
+    /// <summary>
+    /// The links in one line of text. A line that's only a link is used whole, since labels
+    /// like "Macy's", "Acme,Inc" or "Acme Inc" hold characters that would otherwise end it.
+    /// </summary>
+    internal static IEnumerable<string> LinksIn(string line)
     {
-        if (text.Length < prefix.Length) return false;
-        for (var i = 0; i < prefix.Length; i++)
+        line = line.Trim();
+        if (OtpAuthUri.IsOtpAuth(line) || GoogleAuthenticatorExport.IsMigrationLink(line)) return [line];
+        return EmbeddedLink.Matches(line).Select(match => match.Value);
+    }
+
+    static int IndexOfIgnoringCase(ReadOnlySpan<byte> text, ReadOnlySpan<byte> lowercaseWord)
+    {
+        for (var i = 0; i + lowercaseWord.Length <= text.Length; i++)
         {
-            var c = text[i];
-            if (c is >= (byte)'A' and <= (byte)'Z') c = (byte)(c + 32);
-            if (c != prefix[i]) return false;
+            var matches = true;
+            for (var j = 0; j < lowercaseWord.Length && matches; j++)
+            {
+                var c = text[i + j];
+                if (c is >= (byte)'A' and <= (byte)'Z') c = (byte)(c + 32);
+                matches = c == lowercaseWord[j];
+            }
+            if (matches) return i;
         }
-        return true;
+        return -1;
     }
 
     /// <summary>

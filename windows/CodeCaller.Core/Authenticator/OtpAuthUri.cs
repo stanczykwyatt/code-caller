@@ -16,6 +16,19 @@ public static class OtpAuthUri
     public static OtpAccount Parse(string text)
     {
         text = text.Trim();
+        try
+        {
+            return ParseExactly(text);
+        }
+        catch (ImportException) when (text.Contains(' ', StringComparison.Ordinal))
+        {
+            // Some generators leave spaces in labels like "Acme Inc:alice" unencoded.
+            return ParseExactly(text.Replace(" ", "%20", StringComparison.Ordinal));
+        }
+    }
+
+    static OtpAccount ParseExactly(string text)
+    {
         if (!IsOtpAuth(text)) throw new ImportException("That isn't an otpauth:// link.");
 
         var rest = text[Scheme.Length..];
