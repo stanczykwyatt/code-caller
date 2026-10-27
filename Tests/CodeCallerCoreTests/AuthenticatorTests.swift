@@ -244,3 +244,66 @@ struct ImportingAccounts {
         return data as Data
     }
 }
+
+@Suite("Import fixes from review")
+struct ImportReviewFixes {
+    @Test(arguments: [
+        ("otpauth://totp/Macy's:alice?secret=JBSWY3DPEHPK3PXP&issuer=Macy's", "Macy's (alice)"),
+        ("otpauth://totp/Acme,Inc:alice?secret=JBSWY3DPEHPK3PXP&issuer=Acme,Inc", "Acme,Inc (alice)"),
+        ("otpauth://totp/Acme Inc:alice?secret=JBSWY3DPEHPK3PXP", "Acme Inc (alice)"),
+    ])
+    func wholeLinksKeepTheirLabels(link: String, name: String) throws {
+        let result = try AccountImporter.accounts(fromText: link)
+        #expect(result.accounts.map(\.displayName) == [name])
+        #expect(result.skipped == 0)
+    }
+
+    @Test func linkInsideOtherText() throws {
+        let result = try AccountImporter.accounts(fromText: "Scan this: <otpauth://totp/GitHub:wyatt?secret=JBSWY3DPEHPK3PXP>")
+        #expect(result.accounts.map(\.displayName) == ["GitHub (wyatt)"])
+    }
+
+    @Test func unrelatedQRCodeIsIgnored() throws {
+        let image = try ImportingAccounts.twoQRCodesPNG(
+            "https://apps.apple.com/app/id123",
+            "otpauth://totp/GitHub:wyatt?secret=JBSWY3DPEHPK3PXP"
+        )
+        let result = try AccountImporter.accounts(from: image)
+        #expect(result.accounts.map(\.displayName) == ["GitHub (wyatt)"])
+    }
+
+    @Test func junkSecretsAreSkipped() throws {
+        let csv = """
+            Title,URL,Username,Password,Notes,OTPAuth
+            Site,https://site.example,wyatt,pw,,NONE
+            """
+        let result = try AccountImporter.accounts(fromText: csv)
+        #expect(result.accounts.isEmpty)
+        #expect(result.skipped == 1)
+        #expect(OTPAccount(issuer: "", name: "", secret: Base32.decode("NONE")!).isValid == false)
+    }
+}
+
+extension ImportingAccounts {
+    static func twoQRCodesPNG(_ first: String, _ second: String) throws -> Data {
+        func code(_ text: String) throws -> CIImage {
+            let filter = try #require(CIFilter(name: "CIQRCodeGenerator", parameters: ["inputMessage": Data(text.utf8)]))
+            return try #require(filter.outputImage).transformed(by: CGAffineTransform(scaleX: 8, y: 8))
+        }
+        let left = try code(first)
+        let right = try code(second).transformed(by: CGAffineTransform(translationX: left.extent.width + 80, y: 0))
+        let size = CGRect(x: -40, y: -40, width: left.extent.width + right.extent.width + 160, height: max(left.extent.height, right.extent.height) + 80)
+        let image = right.composited(over: left).composited(over: CIImage(color: .white).cropped(to: size))
+        return try pngData(image)
+    }
+
+    static func pngData(_ image: CIImage) throws -> Data {
+        let context = CIContext()
+        let cgImage = try #require(context.createCGImage(image, from: image.extent))
+        let data = NSMutableData()
+        let destination = try #require(CGImageDestinationCreateWithData(data, UTType.png.identifier as CFString, 1, nil))
+        CGImageDestinationAddImage(destination, cgImage, nil)
+        try #require(CGImageDestinationFinalize(destination))
+        return data as Data
+    }
+}
