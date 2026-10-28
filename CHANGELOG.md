@@ -8,7 +8,8 @@ Code Caller is now **Copy 2FA**.
 - **Counter-based codes:** the authenticator now supports counter-based (HOTP) accounts as well as time-based ones, and imports them from otpauth links, Google Authenticator, Aegis, 2FAS and andOTP instead of skipping them. Each code's counter is saved before the code is copied, so a code is never given twice.
 - **Import from 2fa:** brings over the keys from the `~/.2fa` file of the [rsc/2fa](https://github.com/rsc/2fa) command-line tool, so they get Touch ID and keychain encryption instead of a plain-text file.
 - **Add Accounts menu:** importing a file, importing from 2fa, pasting and entering a setup key are now together in one menu.
-- **Website and README:** a new website and README with screenshots, a comparison with other tools and an FAQ.
+- **Website and README:** a new one-screen website, and a README with screenshots, a comparison with rsc/2fa and an FAQ.
+- **Windows license notices:** the Windows preview now ships with the license notices for the .NET runtime it includes.
 
 ## 0.2.0 (2026-10-27)
 
