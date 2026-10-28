@@ -308,10 +308,13 @@ internal sealed class SettingsWindow : Form
 
         var buttons = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false, Margin = Padding.Empty };
         var import = new Button { Text = "Import…", AutoSize = true, MinimumSize = new Size(100, 0) };
-        import.Click += (_, _) => ImportFromFile();
+        import.Click += (_, _) => ImportFromFile(fromTwoFa: false);
+        var importTwoFa = new Button { Text = "Import from 2fa…", AutoSize = true, MinimumSize = new Size(100, 0) };
+        importTwoFa.Click += (_, _) => ImportFromFile(fromTwoFa: true);
         var delete = new Button { Text = "Delete", AutoSize = true, MinimumSize = new Size(100, 0) };
         delete.Click += (_, _) => DeleteSelected();
         buttons.Controls.Add(import);
+        buttons.Controls.Add(importTwoFa);
         buttons.Controls.Add(delete);
         unlockedPanel.Controls.Add(buttons, 1, 0);
 
@@ -333,7 +336,7 @@ internal sealed class SettingsWindow : Form
         unlockedPanel.SetColumnSpan(authenticatorStatus, 2);
         var formats = new Label
         {
-            Text = "Import from a list of otpauth:// links, a Google Authenticator export, a Safari or Apple Passwords CSV, or an unencrypted Bitwarden, Aegis or 2FAS file. Passwords in those files are skipped and never kept.",
+            Text = "Import from a list of otpauth:// links, a Google Authenticator export, a Safari or Apple Passwords CSV, an unencrypted Bitwarden, Aegis, 2FAS or andOTP file, or the ~/.2fa file of the 2fa command-line tool. Passwords in those files are skipped and never kept.",
             AutoSize = true,
             MaximumSize = new Size(490, 0),
             ForeColor = SystemColors.GrayText,
@@ -375,15 +378,27 @@ internal sealed class SettingsWindow : Form
         accountList.EndUpdate();
     }
 
-    void ImportFromFile()
+    /// <param name="fromTwoFa">
+    /// Opens the picker on the ~/.2fa file that rsc/2fa keeps in your user folder, which is
+    /// hidden because its name starts with a dot.
+    /// </param>
+    void ImportFromFile(bool fromTwoFa)
     {
         if (accounts is null) return;
-        using var dialog = new OpenFileDialog
+        using var dialog = new OpenFileDialog { CheckFileExists = true };
+        if (fromTwoFa)
         {
-            Title = "Import accounts",
-            Filter = "Authenticator exports (*.txt;*.csv;*.json)|*.txt;*.csv;*.json|All files (*.*)|*.*",
-            CheckFileExists = true,
-        };
+            dialog.Title = "Import from 2fa";
+            dialog.Filter = "2fa keys (.2fa)|*.2fa|All files (*.*)|*.*";
+            dialog.InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            dialog.FileName = ".2fa";
+            dialog.ShowHiddenFiles = true;
+        }
+        else
+        {
+            dialog.Title = "Import accounts";
+            dialog.Filter = "Authenticator exports (*.txt;*.csv;*.json)|*.txt;*.csv;*.json|All files (*.*)|*.*";
+        }
         if (dialog.ShowDialog(this) != DialogResult.OK) return;
 
         byte[]? file = null;
@@ -396,7 +411,12 @@ internal sealed class SettingsWindow : Form
             }
             file = File.ReadAllBytes(dialog.FileName);
             var result = AccountImporter.Import(file);
-            Save(result, fromFile: true);
+            Save(result, fromTwoFa
+                // 2fa keeps using its file, so it stays. Counters then move on separately in each app.
+                ? result.Accounts.Any(account => account.Kind == OtpKind.Hotp)
+                    ? " Counter-based keys now count separately here and in 2fa, so use each one in only one of them."
+                    : ""
+                : " The export file isn't encrypted, so delete it now that it's imported.");
         }
         catch (ImportException problem)
         {
@@ -418,7 +438,7 @@ internal sealed class SettingsWindow : Form
         if (accounts is null || linkBox.Text.Trim().Length == 0) return;
         try
         {
-            Save(AccountImporter.ImportLinks(linkBox.Text), fromFile: false);
+            Save(AccountImporter.ImportLinks(linkBox.Text), afterword: "");
             linkBox.Clear();
         }
         catch (ImportException problem)
@@ -427,7 +447,8 @@ internal sealed class SettingsWindow : Form
         }
     }
 
-    void Save(ImportResult result, bool fromFile)
+    /// <param name="afterword">Advice to add after the summary of what was imported.</param>
+    void Save(ImportResult result, string afterword)
     {
         if (accounts is null) return;
         int added;
@@ -454,8 +475,7 @@ internal sealed class SettingsWindow : Form
                 ? " Skipped 1 that uses a kind of code Copy 2FA doesn't support, such as Steam, or couldn't be read."
                 : $" Skipped {result.Skipped} that use a kind of code Copy 2FA doesn't support, such as Steam, or couldn't be read.";
         }
-        if (fromFile) message += " The export file isn't encrypted, so delete it now that it's imported.";
-        authenticatorStatus.Text = message;
+        authenticatorStatus.Text = message + afterword;
     }
 
     void DeleteSelected()
