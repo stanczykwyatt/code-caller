@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Copy 2FA: copy 2FA codes on your Mac with one shortcut</title>
+  <meta name="description" content="Copy 2FA is a free, open-source Mac app that copies 2FA verification codes from Mail, Messages and a built-in authenticator with one keyboard shortcut. No internet access, nothing saved. Windows preview too.">
+  <meta name="keywords" content="2FA, copy 2FA code, verification code, one-time password, OTP, TOTP, authenticator, Mac, macOS, menu bar app, Apple Mail, Messages, open source">
+  <link rel="canonical" href="https://stanczykwyatt.github.io/copy-2fa/">
+  <link rel="icon" href="icon.png">
+  <link rel="apple-touch-icon" href="icon.png">
+  <meta name="theme-color" content="#2e3dc7">
+
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Copy 2FA: copy 2FA codes on your Mac with one shortcut">
+  <meta property="og:description" content="A free, open-source Mac app that copies verification codes from Mail, Messages and a built-in authenticator. No internet access, nothing saved.">
+  <meta property="og:url" content="https://stanczykwyatt.github.io/copy-2fa/">
+  <meta property="og:image" content="https://stanczykwyatt.github.io/copy-2fa/social.png">
+  <meta property="og:image:width" content="1280">
+  <meta property="og:image:height" content="640">
+  <meta name="twitter:card" content="summary_large_image">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "Copy 2FA",
+    "description": "Copy 2FA codes from Mail, Messages and a built-in authenticator with one keyboard shortcut.",
+    "operatingSystem": "macOS 14 or later, Windows 10 or later (preview)",
+    "applicationCategory": "SecurityApplication",
+    "url": "https://stanczykwyatt.github.io/copy-2fa/",
+    "downloadUrl": "https://github.com/stanczykwyatt/copy-2fa/releases/latest/download/Copy-2FA.zip",
+    "image": "https://stanczykwyatt.github.io/copy-2fa/social.png",
+    "license": "https://opensource.org/licenses/MIT",
+    "isAccessibleForFree": true,
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+    "author": { "@type": "Person", "name": "stanczykwyatt", "url": "https://github.com/stanczykwyatt" }
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      { "@type": "Question", "name": "How do I copy a 2FA code from email on a Mac?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Add your email account to Apple Mail, open Copy 2FA, and press Control-Shift-C when the code arrives. The newest code is copied, ready to paste with Command-V." } },
+      { "@type": "Question", "name": "Does Copy 2FA work with Gmail, Outlook and iCloud?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Yes. Copy 2FA reads every account you've added to Apple Mail, whatever the provider." } },
+      { "@type": "Question", "name": "Can Copy 2FA read codes from Authy, Duo or Google Authenticator?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Those apps don't let other apps read their codes. Google Authenticator accounts move over with its transfer QR code. Authy doesn't allow exports, so those accounts are set up again with a new QR code. Duo passcodes sent by text are read from Messages." } },
+      { "@type": "Question", "name": "Is Copy 2FA safe?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Copy 2FA can't connect to the internet, only reads messages when you press the shortcut, and keeps authenticator secrets in your keychain behind Touch ID. It's open source, so anyone can check." } },
+      { "@type": "Question", "name": "Is there a Windows version of Copy 2FA?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Yes, in preview. It reads Outlook and Thunderbird and has the same authenticator, unlocked with Windows Hello." } }
+    ]
+  }
+  </script>
+
+  <style>
+    :root {
+      --bg: #f6f7fb;
+      --surface: #ffffff;
+      --text: #15171f;
+      --muted: #5b6070;
+      --line: #e3e6ef;
+      --accent: #3b5bff;
+      --accent-strong: #2e3dc7;
+      --accent-text: #ffffff;
+      --good: #1f9d55;
+      --shadow: 0 10px 30px rgba(20, 30, 80, 0.10);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0e1016;
+        --surface: #171a22;
+        --text: #eef0f6;
+        --muted: #a2a8b8;
+        --line: #282c38;
+        --accent: #6f86ff;
+        --accent-strong: #8fa0ff;
+        --accent-text: #0e1016;
+        --good: #4cc77f;
+        --shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+      }
+    }
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 17px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    }
+    a { color: var(--accent-strong); }
+    .wrap { max-width: 1040px; margin: 0 auto; padding: 0 20px; }
+
+    header.hero { text-align: center; padding: 72px 20px 32px; }
+    .hero img.icon { width: 112px; height: 112px; }
+    .hero h1 { font-size: clamp(40px, 7vw, 64px); line-height: 1.05; margin: 18px 0 12px; letter-spacing: -0.02em; }
+    .hero p.lede { font-size: clamp(19px, 2.6vw, 23px); color: var(--muted); max-width: 680px; margin: 0 auto 28px; }
+    .buttons { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+    .button {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 13px 22px; border-radius: 12px; font-weight: 600; text-decoration: none;
+      border: 1px solid var(--line); background: var(--surface); color: var(--text);
+    }
+    .button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+    .button:hover { filter: brightness(1.05); }
+    .fine { color: var(--muted); font-size: 14px; margin-top: 12px; }
+
+    .shots { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 24px 20px 56px; }
+    .shots img { max-width: 100%; height: auto; }
+
+    section { padding: 48px 0; border-top: 1px solid var(--line); }
+    h2 { font-size: clamp(28px, 4vw, 36px); margin: 0 0 24px; letter-spacing: -0.01em; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+    .card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 22px; box-shadow: var(--shadow); }
+    .card h3 { margin: 0 0 6px; font-size: 19px; }
+    .card p { margin: 0; color: var(--muted); }
+    kbd {
+      font: 600 0.9em -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+      border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 6px;
+      padding: 1px 6px; background: var(--bg);
+    }
+
+    .table-scroll { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; background: var(--surface); border-radius: 16px; overflow: hidden; border: 1px solid var(--line); }
+    th, td { padding: 12px 14px; border-bottom: 1px solid var(--line); text-align: center; }
+    th:first-child, td:first-child { text-align: left; }
+    thead th { font-size: 15px; color: var(--muted); }
+    tbody tr:last-child td { border-bottom: none; }
+    td.yes { color: var(--good); font-weight: 600; }
+    @media (max-width: 640px) {
+      /* Scrolls sideways on phones instead of squeezing every row into a tall column of words. */
+      table { min-width: 560px; }
+      th, td { padding: 10px 10px; font-size: 15px; }
+    }
+
+    ol.steps { padding-left: 22px; }
+    ol.steps li { margin: 6px 0; }
+    .note { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 12px; padding: 16px 18px; color: var(--muted); }
+
+    details { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 18px; margin: 10px 0; }
+    summary { cursor: pointer; font-weight: 600; }
+    details p { color: var(--muted); margin: 10px 0 0; }
+
+    footer { padding: 40px 20px 60px; color: var(--muted); font-size: 15px; text-align: center; border-top: 1px solid var(--line); }
+  </style>
+</head>
+<body>
+  <header class="hero wrap">
+    <img class="icon" src="icon.png" alt="Copy 2FA icon" width="112" height="112">
+    <h1>Copy 2FA</h1>
+    <p class="lede">Copy 2FA codes on your Mac with one keyboard shortcut. Verification codes from Mail and Messages, plus a built-in authenticator, in a free, open-source menu bar app.</p>
+    <div class="buttons">
+      <a class="button primary" href="https://github.com/stanczykwyatt/copy-2fa/releases/latest/download/Copy-2FA.zip">Download for Mac</a>
+      <a class="button" href="https://github.com/stanczykwyatt/copy-2fa">★ Star on GitHub</a>
+      <a class="button" href="https://github.com/stanczykwyatt/copy-2fa/blob/main/windows/README.md">Windows preview</a>
+    </div>
+    <p class="fine">Free · Open source · macOS 14 or later · Apple silicon and Intel</p>
+  </header>
+
+  <div class="shots wrap">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="screenshots/notice-dark.png">
+      <img src="screenshots/notice-light.png" width="320" alt="The notice Copy 2FA shows after copying a code: 482913, copied from GitHub, Mail, just now">
+    </picture>
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="screenshots/picker-dark.png">
+      <img src="screenshots/picker-light.png" width="480" alt="The authenticator search, listing accounts with their current codes">
+    </picture>
+  </div>
+
+  <main class="wrap">
+    <section>
+      <h2>Every 2FA code, one shortcut away</h2>
+      <div class="grid">
+        <div class="card"><h3>Codes from email and texts</h3><p>Press <kbd>⌃⇧C</kbd> in any app to copy the newest code from Mail or Messages. Works with Gmail, iCloud, Outlook, Yahoo and any account in Apple Mail.</p></div>
+        <div class="card"><h3>A built-in authenticator</h3><p>Press <kbd>⌃⇧A</kbd>, use Touch ID, type a few letters and press Return. Time-based and counter-based codes.</p></div>
+        <div class="card"><h3>Bring your accounts over</h3><p>Import from Google Authenticator, Apple Passwords, 1Password, Bitwarden, Aegis, 2FAS, andOTP and rsc/2fa, or a QR code screenshot.</p></div>
+        <div class="card"><h3>Knows where codes come from</h3><p>Every copy shows its source, like “Copied from GitHub · Mail · just now”.</p></div>
+        <div class="card"><h3>Private by design</h3><p>No internet access, enforced by the macOS sandbox. Nothing it reads is saved, and the clipboard clears itself.</p></div>
+        <div class="card"><h3>Free and open source</h3><p>No account, no subscription, no tracking. Every line of code is on GitHub.</p></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>How it compares</h2>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th></th><th>Copy 2FA</th><th>rsc/2fa</th><th>macOS AutoFill</th></tr></thead>
+          <tbody>
+            <tr><td>Codes from email</td><td class="yes">Yes</td><td>No</td><td>Safari and supported apps</td></tr>
+            <tr><td>Codes from texts</td><td class="yes">Yes</td><td>No</td><td>Safari and supported apps</td></tr>
+            <tr><td>Authenticator codes</td><td class="yes">TOTP and HOTP</td><td>TOTP and HOTP</td><td>TOTP, in Passwords</td></tr>
+            <tr><td>Works in Chrome, Firefox, Arc and desktop apps</td><td class="yes">Yes</td><td>From Terminal</td><td>Some apps</td></tr>
+            <tr><td>Secrets encrypted, behind Touch ID</td><td class="yes">Yes</td><td>Plain-text file</td><td>Yes</td></tr>
+            <tr><td>No Terminal needed</td><td class="yes">Yes</td><td>No</td><td>Yes</td></tr>
+            <tr><td>Open source</td><td class="yes">Yes</td><td>Yes</td><td>No</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section>
+      <h2>Install</h2>
+      <ol class="steps">
+        <li><a href="https://github.com/stanczykwyatt/copy-2fa/releases/latest/download/Copy-2FA.zip">Download Copy-2FA.zip</a> and unzip it.</li>
+        <li>Move <b>Copy 2FA</b> to your Applications folder and open it.</li>
+        <li>Allow Mail access when asked, then press <kbd>⌃⇧C</kbd> the next time a code arrives.</li>
+      </ol>
+      <p class="note"><b>About the security warning:</b> The first time you open Copy 2FA, macOS may say Apple couldn't verify that it's free of malware. That's not because anything is wrong with the app. Apple charges developers $99 a year to verify their apps, and Copy 2FA hasn't paid that fee yet. The code is fully open source, so you can read every line or build the app yourself. To open it, go to <b>System Settings → Privacy &amp; Security</b> and click <b>Open Anyway</b>.</p>
+    </section>
+
+    <section>
+      <h2>Questions</h2>
+      <details><summary>How do I copy a 2FA code from email on a Mac?</summary><p>Add your email account to Apple Mail, open Copy 2FA, and press <kbd>⌃⇧C</kbd> when the code arrives. The newest code is copied, ready to paste with <kbd>⌘V</kbd>.</p></details>
+      <details><summary>Does it work with Gmail, Outlook and iCloud?</summary><p>Yes. Copy 2FA reads every account you've added to Apple Mail, whatever the provider.</p></details>
+      <details><summary>Can it read codes from Authy, Duo or Google Authenticator?</summary><p>Those apps don't let other apps read their codes. Google Authenticator accounts move over with its transfer QR code. Authy doesn't allow exports, so set those accounts up again with a new QR code. Duo passcodes sent by text are read from Messages.</p></details>
+      <details><summary>Is it safe?</summary><p>Copy 2FA can't connect to the internet, only reads messages when you press the shortcut, and keeps authenticator secrets in your keychain behind Touch ID. It's open source, so anyone can check.</p></details>
+      <details><summary>Is there a Windows version?</summary><p>Yes, in preview. It reads Outlook and Thunderbird and has the same authenticator, unlocked with Windows Hello.</p></details>
+    </section>
+  </main>
+
+  <footer class="wrap">
+    Copy 2FA is free and open source under the MIT License. <a href="https://github.com/stanczykwyatt/copy-2fa">Source code on GitHub</a>
+  </footer>
+</body>
+</html>
