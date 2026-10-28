@@ -13,19 +13,21 @@ This is the Windows version of [Copy 2FA](../README.md). It finds codes with the
 
 If the code hasn't arrived yet, Copy 2FA looks again a few times over about six seconds.
 
-For accounts that use an authenticator app, press **Ctrl+Shift+A**, confirm it's you with Windows Hello, type a few letters of the account's name and press **Enter**.
+For accounts that use an authenticator app, press **Ctrl+Shift+A** and confirm it's you with Windows Hello. Each account shows its current code and how long it has left. Type a few letters of the account's name and press **Enter** to copy its code.
 
 ## What works
 
 - **Outlook (classic)**, the desktop Outlook that comes with Microsoft 365 and Office. Copy 2FA reads the inbox and junk folder of every account in it.
 - **Thunderbird.** Copy 2FA reads the inbox and junk folders straight from your Thunderbird profile, for IMAP, POP and local accounts.
-- **A built-in authenticator** for time-based codes (TOTP), with SHA1, SHA256 or SHA512, 6 to 8 digits and any period. You can import accounts from:
+- **A built-in authenticator** for time-based (TOTP) and counter-based (HOTP) codes, with SHA1, SHA256 or SHA512, 6 to 8 digits and any period. A counter-based account shows *Next code* instead of a countdown, and its counter is saved before each code is copied, so no code is ever given out twice. You can import accounts from:
   - a text file of `otpauth://` links, or a single link pasted into Settings
   - Google Authenticator's *Transfer accounts* export (the `otpauth-migration://` link in its QR code)
   - a Safari or Apple Passwords CSV export (passwords in the file are skipped and never kept)
   - an unencrypted Bitwarden JSON export
   - an unencrypted Aegis export
   - a 2FAS backup saved without a password
+  - an andOTP backup saved as plain JSON
+  - the `~/.2fa` file of [rsc/2fa](https://github.com/rsc/2fa), with **Import from 2fa…** in Settings. It's left in place, since 2fa keeps using it, but counter-based keys then count separately in each app, so use each one in only one of them.
 - Codes in English, Spanish, French, German, Chinese, Japanese, Korean and more, including grouped codes like `482 913` and letter-and-number codes like `F4K9P`.
 
 ## What doesn't
@@ -33,8 +35,8 @@ For accounts that use an authenticator app, press **Ctrl+Shift+A**, confirm it's
 - **Text messages.** Phone Link has no API that other apps can use, so codes sent by SMS can't be read.
 - **The new Outlook for Windows**, and mail you only read in a browser, such as Outlook.com or Gmail on the web. The new Outlook has no way for other apps to read it. Classic Outlook or Thunderbird, set up with the same accounts, works.
 - **Thunderbird folders that aren't kept offline.** For IMAP accounts, *Keep messages for this account on this computer* needs to stay on in Thunderbird's account settings. It's on by default. Thunderbird's optional maildir storage isn't supported either.
-- **Counter-based (HOTP) and Steam codes** in the authenticator. They're skipped when importing.
-- **Encrypted exports.** Export from Bitwarden, Aegis or 2FAS without encryption, import the file, then delete it.
+- **Steam codes** in the authenticator. They use their own format and are skipped when importing.
+- **Encrypted exports.** Export from Bitwarden, Aegis, 2FAS or andOTP without encryption, import the file, then delete it.
 
 ## Privacy and security
 
@@ -96,6 +98,6 @@ Settings are saved in `%LOCALAPPDATA%\Copy2FA\settings.json`, with nothing sensi
 
 | | |
 |---|---|
-| `Copy2FA.Core` | Code detection, the mbox reader, TOTP, importers and settings. Cross-platform. |
-| `Copy2FA.Core.Tests` | xunit tests, including every macOS code detection test and the RFC 6238 test vectors. |
+| `Copy2FA.Core` | Code detection, the mbox reader, TOTP and HOTP, importers and settings. Cross-platform. |
+| `Copy2FA.Core.Tests` | xunit tests, including every macOS code detection test and the RFC 4226 and RFC 6238 test vectors. |
 | `Copy2FA` | The Windows tray app. |
