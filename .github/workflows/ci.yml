@@ -22,9 +22,9 @@ jobs:
 
       - name: Check the app has no network access
         run: |
-          entitlements="$(codesign -d --entitlements - --xml "build/Code Caller.app" 2>/dev/null)"
+          entitlements="$(codesign -d --entitlements - --xml "build/Copy 2FA.app" 2>/dev/null)"
           if grep -q "com.apple.security.network" <<< "$entitlements"; then
-            echo "::error::Code Caller must never have a network entitlement."
+            echo "::error::Copy 2FA must never have a network entitlement."
             exit 1
           fi
           echo "No network entitlements."

@@ -3,7 +3,7 @@ import Carbon.HIToolbox
 /// A system-wide keyboard shortcut.
 ///
 /// Uses the Carbon hot key API, which only reports the shortcuts that were
-/// registered. Code Caller never needs Accessibility or Input Monitoring
+/// registered. Copy 2FA never needs Accessibility or Input Monitoring
 /// permission and never sees anything else you type.
 @MainActor
 final class HotKey {

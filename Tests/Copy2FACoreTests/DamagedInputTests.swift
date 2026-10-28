@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import CodeCallerCore
+@testable import Copy2FACore
 
 /// Emails, texts and import files can come from anyone, so no input may crash a parser.
 @Suite("Damaged input")

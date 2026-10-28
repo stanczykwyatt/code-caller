@@ -1,4 +1,4 @@
-import CodeCallerCore
+import Copy2FACore
 import SwiftUI
 
 /// Where a code came from, shown in the notice so it's clear which app it was read from.

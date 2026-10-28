@@ -77,10 +77,10 @@ private struct GeneralSettings: View {
             }
 
             Section {
-                Text("Code Caller has no internet access. It only reads Mail and Messages when you press the shortcut, and never saves anything it reads.")
+                Text("Copy 2FA has no internet access. It only reads Mail and Messages when you press the shortcut, and never saves anything it reads.")
                     .foregroundStyle(.secondary)
                 LabeledContent("Version", value: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "Development")
-                Link("Source code on GitHub", destination: URL(string: "https://github.com/stanczykwyatt/code-caller")!)
+                Link("Source code on GitHub", destination: URL(string: "https://github.com/stanczykwyatt/copy-2fa")!)
             }
         }
         .formStyle(.grouped)
@@ -88,9 +88,9 @@ private struct GeneralSettings: View {
 
     private var messagesFooter: String {
         guard preferences.readsMessages, !state.canReadMessages else {
-            return "Reading texts needs Full Disk Access. Code Caller's sandbox still keeps it out of everything except your Messages database."
+            return "Reading texts needs Full Disk Access. Copy 2FA's sandbox still keeps it out of everything except your Messages database."
         }
-        return "In System Settings, click +, choose Code Caller and turn it on. Code Caller's sandbox still keeps it out of everything except your Messages database."
+        return "In System Settings, click +, choose Copy 2FA and turn it on. Copy 2FA's sandbox still keeps it out of everything except your Messages database."
     }
 }
 

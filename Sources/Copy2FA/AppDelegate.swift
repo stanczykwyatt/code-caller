@@ -1,6 +1,6 @@
 import AppKit
 import Carbon.HIToolbox
-import CodeCallerCore
+import Copy2FACore
 import ServiceManagement
 import SwiftUI
 import UniformTypeIdentifiers
@@ -42,7 +42,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidBecomeActive(_ notification: Notification) {
-        // Picks up a change made in System Settings while Code Caller was in the background.
+        // Picks up a change made in System Settings while Copy 2FA was in the background.
         refreshMailAccess()
         state.canReadMessages = MessagesStore.canRead()
     }
@@ -152,7 +152,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         case .failed:
             showAlert(
                 "Couldn't Open the Authenticator",
-                "Code Caller couldn't read its keychain item. If macOS asks whether Code Caller may use it, choose Always Allow."
+                "Copy 2FA couldn't read its keychain item. If macOS asks whether Copy 2FA may use it, choose Always Allow."
             )
             return false
         }
@@ -191,7 +191,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             var lines = [added == 1 ? "Added 1 account." : "Added \(added) accounts."]
             let duplicates = result.accounts.count - added
             if duplicates > 0 {
-                lines.append(duplicates == 1 ? "1 was already in Code Caller." : "\(duplicates) were already in Code Caller.")
+                lines.append(duplicates == 1 ? "1 was already in Copy 2FA." : "\(duplicates) were already in Copy 2FA.")
             }
             if result.skipped > 0 {
                 lines.append("\(result.skipped) couldn't be used, because they're Steam codes or are missing a valid setup key.")
@@ -201,7 +201,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
             showAlert(added > 0 ? "Accounts Imported" : "Nothing New to Add", lines.joined(separator: " "))
         } catch {
-            showAlert("Couldn't Save the Accounts", "The keychain didn't accept the change. Unlock Code Caller and try again.")
+            showAlert("Couldn't Save the Accounts", "The keychain didn't accept the change. Unlock Copy 2FA and try again.")
         }
     }
 
@@ -212,9 +212,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         case .noQRCode:
             "There's no readable QR code in that image. Try a sharper screenshot of just the code."
         case .unrecognized:
-            "Code Caller reads QR code images, otpauth links, Google Authenticator transfer codes, and exports from Apple Passwords, Bitwarden, 1Password, Aegis, 2FAS and andOTP."
+            "Copy 2FA reads QR code images, otpauth links, Google Authenticator transfer codes, and exports from Apple Passwords, Bitwarden, 1Password, Aegis, 2FAS and andOTP."
         case nil:
-            "Code Caller couldn't read it."
+            "Copy 2FA couldn't read it."
         }
         showAlert("Couldn't Import Accounts", message)
     }
@@ -235,7 +235,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func makeStatusItem() -> NSStatusItem {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        item.button?.image = NSImage(systemSymbolName: "123.rectangle", accessibilityDescription: "Code Caller")
+        item.button?.image = NSImage(systemSymbolName: "123.rectangle", accessibilityDescription: "Copy 2FA")
 
         let menu = NSMenu()
         let copy = NSMenuItem(title: "Copy Latest Code", action: #selector(copyLatestCode), keyEquivalent: "")
@@ -249,7 +249,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         settings.target = self
         menu.addItem(settings)
         menu.addItem(.separator())
-        menu.addItem(NSMenuItem(title: "Quit Code Caller", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
+        menu.addItem(NSMenuItem(title: "Quit Copy 2FA", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
         item.menu = menu
 
         copyItem = copy
@@ -270,7 +270,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func openSettings() {
         refreshMailAccess()
         state.canReadMessages = MessagesStore.canRead()
-        settingsWindow = present(settingsWindow, title: "Code Caller Settings") {
+        settingsWindow = present(settingsWindow, title: "Copy 2FA Settings") {
             SettingsView(preferences: preferences, state: state, vault: vault, actions: self)
         }
     }
@@ -336,7 +336,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Mail access
 
     private func refreshMailAccess() {
-        // Checking needs Mail to be open, and Code Caller shouldn't open it just to look.
+        // Checking needs Mail to be open, and Copy 2FA shouldn't open it just to look.
         guard MailReader.isRunning else { return }
         Task {
             if await MailReader.isDenied() {
@@ -438,7 +438,7 @@ extension AppDelegate: SettingsActions {
         panel.showsHiddenFiles = true
         panel.directoryURL = URL(fileURLWithPath: UserHome.path, isDirectory: true)
         panel.message = "Choose the .2fa file in your home folder. It's where the 2fa command-line tool keeps its keys."
-        importFile(with: panel, advice: "The .2fa file keeps your keys unencrypted. Once you've switched over, delete it.")
+        importFile(with: panel, advice: "The .2fa file keeps your keys unencrypted, so delete it once you've switched over. Until then, use only one app for counter-based keys, since each one moves its counters on separately.")
     }
 
     private func importFile(with panel: NSOpenPanel, advice: String) {

@@ -1,5 +1,5 @@
 import Testing
-@testable import CodeCallerCore
+@testable import Copy2FACore
 
 @Suite("Sender names")
 struct SenderNames {

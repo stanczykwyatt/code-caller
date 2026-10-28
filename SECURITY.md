@@ -1,19 +1,19 @@
 # Security
 
-Code Caller handles one-time codes, so it is built to do as little as possible with as little access as possible.
+Copy 2FA handles one-time codes, so it is built to do as little as possible with as little access as possible.
 
 ## Reporting a vulnerability
 
 Please report security problems privately through **Security → Report a vulnerability** on this repository, not in a public issue. You'll get a reply within a few days.
 
-## What Code Caller can access
+## What Copy 2FA can access
 
 | | |
 |---|---|
 | **Apple Mail** | Sends read-only Apple Events to Mail when you press the shortcut. macOS asks you first, and you can turn it off in System Settings → Privacy & Security → Automation. |
-| **Messages** | Off by default. When you turn it on and give Code Caller Full Disk Access, it opens `~/Library/Messages/chat.db` and its two journal files read-only, and reads the last few minutes of incoming texts. Attachments stay out of reach. |
+| **Messages** | Off by default. When you turn it on and give Copy 2FA Full Disk Access, it opens `~/Library/Messages/chat.db` and its two journal files read-only, and reads the last few minutes of incoming texts. Attachments stay out of reach. |
 | **Files you pick** | When you import authenticator accounts, it can read only the one file you choose. |
-| **Keychain** | Keeps authenticator secrets in one login keychain item that only Code Caller can read. |
+| **Keychain** | Keeps authenticator secrets in one login keychain item that only Copy 2FA can read. |
 | **Clipboard** | Writes the code, then clears it after the delay you choose, unless you've copied something else since. |
 | **Its own settings** | Stored in the app's sandbox container. Nothing read from Mail or Messages is ever stored. |
 
@@ -27,7 +27,7 @@ Please report security problems privately through **Security → Report a vulner
 Check it yourself on any copy of the app:
 
 ```bash
-codesign -d --entitlements - "/Applications/Code Caller.app"
+codesign -d --entitlements - "/Applications/Copy 2FA.app"
 ```
 
 ## How codes are handled
@@ -45,14 +45,14 @@ codesign -d --entitlements - "/Applications/Code Caller.app"
 - Secrets are stored in the login keychain, never synced to iCloud, and never exported.
 - Opening the authenticator needs Touch ID or your Mac's password. By default it asks every time, even if Settings is open.
 - Secrets are only loaded into memory while the authenticator is unlocked. It locks again after the time you choose, two minutes after you unlock it in Settings, when Settings closes, when the screen locks and when the Mac sleeps. The account search closes the moment it locks.
-- Touch ID is checked by Code Caller before it reads the keychain. The keychain item itself is protected by your login keychain rather than by Touch ID, because tying it to Touch ID needs a paid Apple developer certificate.
-- Imports keep only one-time password secrets. Passwords and anything else in an export file are never stored. Code Caller reminds you to delete the export file afterward.
+- Touch ID is checked by Copy 2FA before it reads the keychain. The keychain item itself is protected by your login keychain rather than by Touch ID, because tying it to Touch ID needs a paid Apple developer certificate.
+- Imports keep only one-time password secrets. Passwords and anything else in an export file are never stored. Copy 2FA reminds you to delete the export file afterward.
 - Setup links you paste are cleared from the clipboard right after they're imported.
 
 ## Limits worth knowing
 
 - While a code is on the clipboard, any app you run can read it, as with anything you copy.
-- Anyone using your unlocked Mac could read your email and texts anyway. Code Caller doesn't change that.
+- Anyone using your unlocked Mac could read your email and texts anyway. Copy 2FA doesn't change that.
 - Keeping authenticator secrets on the same Mac you sign in from means a stolen, unlocked Mac has both factors. Touch ID and the automatic lock reduce that risk, but don't remove it.
 - Releases aren't notarized yet, because the Apple Developer Program fee hasn't been paid. You can build the app from source instead and compare it with the code. Because unsigned builds change identity with every version, macOS may ask again for access to Mail and the keychain after an update.
 

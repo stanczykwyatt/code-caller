@@ -1,5 +1,5 @@
 import AppKit
-import CodeCallerCore
+import Copy2FACore
 import LocalAuthentication
 import Observation
 import Security
@@ -141,6 +141,7 @@ final class Vault {
 
 /// Stores every account as one item in the login keychain, readable only by this app.
 private enum Keychain {
+    /// Kept from the app's original name, Code Caller, so accounts saved before the rename are still found.
     static let service = "com.stanczykwyatt.CodeCaller.authenticator"
     static let account = "accounts"
 
@@ -161,7 +162,7 @@ private enum Keychain {
         if status == errSecItemNotFound {
             var item = baseQuery
             item[kSecValueData as String] = data
-            item[kSecAttrLabel as String] = "Code Caller authenticator"
+            item[kSecAttrLabel as String] = "Copy 2FA authenticator"
             item[kSecAttrDescription as String] = "One-time password secrets"
             let added = SecItemAdd(item as CFDictionary, nil)
             guard added == errSecSuccess else { throw VaultError.keychain(added) }

@@ -1,7 +1,7 @@
 import Foundation
 import SQLite3
 import Testing
-@testable import CodeCallerCore
+@testable import Copy2FACore
 
 /// Archives made with NSArchiver, the same format Messages uses for `attributedBody`.
 enum Archives {

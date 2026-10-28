@@ -8,13 +8,13 @@ You need macOS 14 or later and Swift 6 (Xcode 16 or the Command Line Tools).
 
 ```bash
 swift test               # run the tests
-scripts/build-app.sh     # build "Code Caller.app" into ./build
-open "build/Code Caller.app"
+scripts/build-app.sh     # build "Copy 2FA.app" into ./build
+open "build/Copy 2FA.app"
 ```
 
 ## Reporting a missed or wrong code
 
-Code detection lives in `Sources/CodeCallerCore/CodeExtractor.swift`, with tests in `Tests/CodeCallerCoreTests`. If a code isn't found, or the wrong number is copied, open an issue with the subject and the text around the code. **Replace the real code and any personal details first.** Even better, add a failing test.
+Code detection lives in `Sources/Copy2FACore/CodeExtractor.swift`, with tests in `Tests/Copy2FACoreTests`. If a code isn't found, or the wrong number is copied, open an issue with the subject and the text around the code. **Replace the real code and any personal details first.** Even better, add a failing test.
 
 ## Ground rules
 

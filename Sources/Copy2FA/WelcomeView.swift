@@ -14,7 +14,7 @@ struct WelcomeView: View {
                 .accessibilityHidden(true)
 
             VStack(spacing: 6) {
-                Text("Welcome to Code Caller")
+                Text("Welcome to Copy 2FA")
                     .font(.title2.bold())
                 Text("Copy your newest 2FA code from Apple Mail with one shortcut, in any app.")
                     .multilineTextAlignment(.center)
@@ -23,7 +23,7 @@ struct WelcomeView: View {
 
             VStack(alignment: .leading, spacing: 16) {
                 Step(number: 1, title: "Allow Mail access",
-                     detail: "macOS will ask if Code Caller can control Mail. It only reads recent inbox messages, and only when you press the shortcut.") {
+                     detail: "macOS will ask if Copy 2FA can control Mail. It only reads recent inbox messages, and only when you press the shortcut.") {
                     MailAccessStatus(access: state.mailAccess, allow: actions.allowMailAccess)
                 }
                 Step(number: 2, title: "Press \(preferences.shortcut.displayString)",
@@ -36,7 +36,7 @@ struct WelcomeView: View {
                 }
             }
 
-            Text("Code Caller has no internet access and never saves what it reads.")
+            Text("Copy 2FA has no internet access and never saves what it reads.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)

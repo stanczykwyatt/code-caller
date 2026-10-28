@@ -83,7 +83,7 @@ enum MailReader {
     }
 
     /// Asks Mail for its own name, which reads nothing from your email. The first time, this is
-    /// what makes macOS ask whether Code Caller may control Mail.
+    /// what makes macOS ask whether Copy 2FA may control Mail.
     static func confirmAccess() async -> MailAccess {
         let script = """
         with timeout of 120 seconds
