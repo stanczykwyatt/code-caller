@@ -121,9 +121,10 @@
       align-items: center;
       text-align: center;
     }
+    .title { display: flex; flex-direction: column; align-items: center; margin-bottom: 8px; }
     .icon { width: clamp(56px, 9vh, 76px); height: auto; filter: drop-shadow(0 10px 24px rgba(0, 0, 0, 0.45)); }
     h1 {
-      margin: clamp(10px, 2vh, 18px) 0 8px;
+      margin: clamp(10px, 2vh, 18px) 0 0;
       font-size: clamp(40px, min(7.5vw, 9vh), 76px);
       font-weight: 600;
       line-height: 1;
@@ -140,28 +141,143 @@
       color: #fff;
     }
 
-    /* The same notice the app shows after copying a code. */
+    /* A looping demo: press the shortcut, the app's notice drops in, then the code is pasted into a
+       sign-in form. Without JavaScript, or with reduced motion, it shows the finished state. */
+    .demo {
+      display: grid;
+      justify-items: center;
+      gap: clamp(10px, 1.8vh, 16px);
+      margin-bottom: clamp(18px, 3.6vh, 30px);
+    }
+
+    /* The same notice the app shows after copying a code. Both examples sit in one grid cell, so
+       swapping them never moves anything, even where one wraps onto two lines. */
+    .notices { display: grid; justify-items: center; max-width: 100%; }
     .notice {
+      grid-area: 1 / 1;
+      position: relative;
       display: flex;
       align-items: center;
       gap: 14px;
-      margin-bottom: clamp(18px, 3.6vh, 30px);
+      max-width: 100%;
       padding: 13px 20px 13px 16px;
       border: 1px solid rgba(255, 255, 255, 0.14);
       border-radius: 16px;
       background: rgba(255, 255, 255, 0.08);
+      box-shadow: 0 14px 36px rgba(0, 0, 0, 0.28);
       text-align: left;
-      animation: drop 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) 0.35s both;
+      overflow: hidden;
+      opacity: 0;
+      transform: translateY(-12px) scale(0.96);
+      transition: opacity 0.3s, transform 0.35s ease-in;
     }
     .notice svg { width: 30px; height: 30px; flex: none; }
     .code { font: 600 26px/1.1 var(--mono); letter-spacing: 0.02em; }
     .detail { margin-top: 3px; font-size: 14px; color: rgba(255, 255, 255, 0.6); }
-    @keyframes drop {
-      from { opacity: 0; transform: translateY(-12px); }
-      to { opacity: 1; transform: none; }
+    /* A soft glint crosses the notice as it lands. */
+    .notice::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, 0.13) 50%, transparent 65%);
+      transform: translateX(-100%);
     }
+    .has-notice[data-source="mail"] .notice-mail,
+    .has-notice[data-source="messages"] .notice-messages {
+      opacity: 1;
+      transform: none;
+      transition: opacity 0.3s ease-out, transform 0.6s cubic-bezier(0.2, 1.3, 0.4, 1);
+    }
+    .has-notice[data-source="mail"] .notice-mail::after,
+    .has-notice[data-source="messages"] .notice-messages::after {
+      transform: translateX(100%);
+      transition: transform 1.1s 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* The sign-in form's code field. */
+    .field { display: flex; gap: 8px; }
+    .digit {
+      position: relative;
+      display: grid;
+      place-items: center;
+      width: 40px;
+      height: 48px;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 11px;
+      background: rgba(255, 255, 255, 0.04);
+      font: 600 22px var(--mono);
+      transition: border-color 0.3s, background-color 0.3s;
+    }
+    .digit:nth-child(4) { margin-left: 8px; }
+    .digit span { opacity: 0; transform: translateY(8px); transition: opacity 0.25s, transform 0.25s; }
+    .is-filled .digit { border-color: rgba(255, 255, 255, 0.34); transition-delay: calc(var(--i) * 50ms); }
+    .is-filled .digit span {
+      opacity: 1;
+      transform: none;
+      transition: opacity 0.3s, transform 0.45s cubic-bezier(0.2, 1.3, 0.4, 1);
+      transition-delay: calc(var(--i) * 50ms);
+    }
+    .is-done .digit { border-color: rgba(48, 209, 88, 0.6); background: rgba(48, 209, 88, 0.08); }
+    /* Before the paste, the first box has focus and a blinking caret. */
+    .demo:not(.is-filled) .digit:first-child { border-color: rgba(255, 255, 255, 0.5); }
+    .demo:not(.is-filled) .digit:first-child::after {
+      content: "";
+      position: absolute;
+      width: 2px;
+      height: 22px;
+      border-radius: 1px;
+      background: #fff;
+      animation: blink 1s steps(1) infinite;
+    }
+    @keyframes blink { 50% { visibility: hidden; } }
+
+    /* What's being pressed, then the result. */
+    .steps { display: grid; height: 26px; }
+    .step {
+      grid-area: 1 / 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      font: 12px/1 var(--mono);
+      letter-spacing: 0.06em;
+      color: rgba(255, 255, 255, 0.55);
+      opacity: 0;
+      transform: translateY(6px);
+      transition: opacity 0.3s, transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+    .step span { margin-left: 5px; }
+    .step svg { width: 14px; height: 14px; }
+    .step-done { color: #30d158; }
+    .demo[data-step="copy"] .step-copy,
+    .demo[data-step="paste"] .step-paste,
+    .demo[data-step="done"] .step-done { opacity: 1; transform: none; }
+    .step kbd {
+      display: inline-grid;
+      place-items: center;
+      min-width: 24px;
+      height: 24px;
+      padding: 0 6px;
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      border-radius: 6px;
+      font: 600 13px var(--sans);
+      letter-spacing: 0;
+      box-shadow: 0 2px 0 rgba(255, 255, 255, 0.14);
+      transition: transform 0.12s, box-shadow 0.2s, background-color 0.12s, border-color 0.12s, color 0.12s;
+    }
+    .is-pressed[data-step="copy"] .step-copy kbd,
+    .is-pressed[data-step="paste"] .step-paste kbd {
+      transform: translateY(2px);
+      border-color: #fff;
+      background: #fff;
+      color: #0d0f12;
+      box-shadow: 0 0 0 rgba(255, 255, 255, 0.14), 0 0 18px rgba(255, 255, 255, 0.35);
+    }
+    .is-pressed .step kbd:nth-child(2) { transition-delay: 0.05s; }
+    .is-pressed .step kbd:nth-child(3) { transition-delay: 0.1s; }
+
     @media (prefers-reduced-motion: reduce) {
-      .notice { animation: none; }
+      .demo *, .demo *::after { transition: none !important; animation: none !important; }
     }
 
     .actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-bottom: 16px; }
@@ -181,16 +297,45 @@
     .button.solid:hover { background: rgba(255, 255, 255, 0.86); }
 
     .thanks { margin: 0 0 14px; font-size: 14px; color: rgba(255, 255, 255, 0.75); animation: drop 0.4s ease-out both; }
+    @keyframes drop {
+      from { opacity: 0; transform: translateY(-12px); }
+      to { opacity: 1; transform: none; }
+    }
     .foot { display: grid; gap: 4px; text-align: center; }
+    /* On shorter screens the icon moves beside the name, so everything still fits without scrolling. */
+    @media (max-height: 760px), (max-width: 480px) {
+      .title { flex-direction: row; gap: clamp(10px, 1.6vh, 16px); margin-top: clamp(4px, 1vh, 10px); }
+      .icon { width: clamp(36px, min(6.4vw, 7.6vh), 58px); }
+      h1 { margin: 0; }
+    }
     @media (max-height: 640px) {
       .center { padding: 4px 0; }
       .lede { margin-bottom: 14px; }
-      .notice { margin-bottom: 16px; }
+      .demo { gap: 8px; margin-bottom: 16px; }
+      .digit { height: 44px; }
       .actions { margin-bottom: 10px; }
     }
     @media (max-height: 560px) {
-      .icon { display: none; }
-      h1 { margin-top: 0; }
+      .title { margin-top: 0; }
+      .lede { margin-bottom: 8px; }
+      .demo { gap: 6px; margin-bottom: 8px; }
+      .notice { padding-top: 9px; padding-bottom: 9px; }
+      .digit { height: 40px; }
+      .steps { display: none; }
+    }
+    /* On phones the notice's detail splits into two lines at the separator. */
+    @media (max-width: 480px) {
+      .notice { gap: 12px; padding: 11px 16px 11px 13px; }
+      .notice svg { width: 26px; height: 26px; }
+      .code { font-size: 23px; }
+      .detail { font-size: 13px; }
+      .detail .sep { display: none; }
+      .detail .where { display: block; }
+    }
+    @media (max-width: 400px) {
+      .field { gap: 6px; }
+      .digit { width: 34px; height: 42px; font-size: 20px; }
+      .digit:nth-child(4) { margin-left: 6px; }
     }
     .foot p { margin: 0; font: 11px/1.6 var(--mono); letter-spacing: 0.03em; color: rgba(255, 255, 255, 0.4); }
     .foot a { color: rgba(255, 255, 255, 0.7); }
@@ -208,18 +353,49 @@
       </nav>
 
       <section class="center">
-        <img class="icon" src="icon.png" alt="" width="76" height="76">
-        <h1>Copy 2FA</h1>
+        <div class="title">
+          <img class="icon" src="icon.png" alt="" width="76" height="76">
+          <h1>Copy 2FA</h1>
+        </div>
         <p class="lede">Press <kbd>⌃⇧C</kbd> anywhere. Your newest 2FA code is copied.</p>
 
-        <div class="notice" role="img" aria-label="Example notice: code 482913, copied from Harbor Bank, found in Mail just now">
-          <svg viewBox="0 0 32 32" aria-hidden="true">
-            <rect x="3" y="7" width="26" height="18" rx="3.5" fill="#4d8dff"/>
-            <path d="M4.8 9.6 16 18l11.2-8.4" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-          <div>
-            <div class="code">482913</div>
-            <div class="detail">Copied from Harbor Bank · Mail · just now</div>
+        <div class="demo has-notice is-filled is-done" data-source="mail" data-step="done" role="img" aria-label="Demo: pressing Control-Shift-C copies the code 482913 from a Harbor Bank email, then Command-V pastes it into a sign-in form">
+          <div class="notices" aria-hidden="true">
+            <div class="notice notice-mail">
+              <svg viewBox="0 0 32 32">
+                <rect x="3" y="7" width="26" height="18" rx="3.5" fill="#4d8dff"/>
+                <path d="M4.8 9.6 16 18l11.2-8.4" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <div>
+                <div class="code">482913</div>
+                <div class="detail">Copied from Harbor Bank<span class="sep"> · </span><span class="where">Mail · just now</span></div>
+              </div>
+            </div>
+            <div class="notice notice-messages">
+              <svg viewBox="0 0 32 32">
+                <path d="M16 5.5C9.1 5.5 3.5 10 3.5 15.6c0 3.2 1.8 6 4.7 7.9-.3 1.8-1.2 3.4-2.5 4.6 2.6-.1 4.9-1 6.6-2.4 1.2.3 2.4.4 3.7.4 6.9 0 12.5-4.5 12.5-10.1S22.9 5.5 16 5.5z" fill="#30d158"/>
+              </svg>
+              <div>
+                <div class="code">590274</div>
+                <div class="detail">Copied from Atlas Store<span class="sep"> · </span><span class="where">Messages · just now</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="field" aria-hidden="true">
+            <span class="digit" style="--i: 0"><span>4</span></span>
+            <span class="digit" style="--i: 1"><span>8</span></span>
+            <span class="digit" style="--i: 2"><span>2</span></span>
+            <span class="digit" style="--i: 3"><span>9</span></span>
+            <span class="digit" style="--i: 4"><span>1</span></span>
+            <span class="digit" style="--i: 5"><span>3</span></span>
+          </div>
+          <div class="steps" aria-hidden="true">
+            <span class="step step-copy"><kbd>⌃</kbd><kbd>⇧</kbd><kbd>C</kbd><span>copy</span></span>
+            <span class="step step-paste"><kbd>⌘</kbd><kbd>V</kbd><span>paste</span></span>
+            <span class="step step-done">
+              <svg viewBox="0 0 16 16"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              signed in
+            </span>
           </div>
         </div>
 
@@ -246,6 +422,65 @@
     document.querySelector(".button.solid").addEventListener("click", () => {
       document.getElementById("thanks").hidden = false;
     });
+
+    // Plays the demo on a loop, alternating between a code from Mail and one from Messages.
+    const demo = document.querySelector(".demo");
+    if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      const examples = [
+        { source: "mail", code: "482913" },
+        { source: "messages", code: "590274" },
+      ];
+      let example = 0;
+
+      function show({ source, code }) {
+        demo.dataset.source = source;
+        demo.querySelectorAll(".digit span").forEach((digit, i) => (digit.textContent = code[i]));
+      }
+
+      // Each step runs this many milliseconds after the one before it. The first runs straight
+      // away when the demo starts, and after the pause when it loops.
+      const steps = [
+        [500, () => {
+          demo.classList.remove("has-notice", "is-filled", "is-done");
+          demo.dataset.step = "copy";
+          show(examples[example]);
+          example = (example + 1) % examples.length;
+        }],
+        [900, () => demo.classList.add("is-pressed")],
+        [380, () => demo.classList.replace("is-pressed", "has-notice")],
+        [1100, () => (demo.dataset.step = "paste")],
+        [450, () => demo.classList.add("is-pressed")],
+        [180, () => demo.classList.add("is-filled")],
+        [200, () => demo.classList.remove("is-pressed")],
+        [550, () => {
+          demo.classList.add("is-done");
+          demo.dataset.step = "done";
+        }],
+        [1400, () => demo.classList.remove("has-notice")],
+        [700, () => {
+          demo.classList.remove("is-filled", "is-done");
+          demo.dataset.step = "";
+        }],
+      ];
+      let step = 0;
+      let timer;
+
+      function run() {
+        steps[step][1]();
+        step = (step + 1) % steps.length;
+        timer = setTimeout(run, steps[step][0]);
+      }
+
+      // Starts over when the tab comes back, rather than catching up on missed steps.
+      document.addEventListener("visibilitychange", () => {
+        clearTimeout(timer);
+        if (!document.hidden) {
+          step = 0;
+          run();
+        }
+      });
+      run();
+    }
   </script>
 </body>
 </html>
