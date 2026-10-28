@@ -52,16 +52,27 @@ jobs:
       - name: Publish for Arm64
         run: dotnet publish windows/Copy2FA --configuration Release --runtime win-arm64 --self-contained -p:PublishSingleFile=true --output publish/win-arm64
 
+      # The .NET runtime is built into the exe, so its license notices ship with it.
+      - name: Add license notices
+        shell: bash
+        run: |
+          cp -R windows/licenses publish/win-x64/licenses
+          cp -R windows/licenses publish/win-arm64/licenses
+
       - name: Upload the x64 build
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: Copy2FA-win-x64
-          path: publish/win-x64/Copy2FA.exe
+          path: |
+            publish/win-x64/Copy2FA.exe
+            publish/win-x64/licenses/
           if-no-files-found: error
 
       - name: Upload the Arm64 build
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: Copy2FA-win-arm64
-          path: publish/win-arm64/Copy2FA.exe
+          path: |
+            publish/win-arm64/Copy2FA.exe
+            publish/win-arm64/licenses/
           if-no-files-found: error

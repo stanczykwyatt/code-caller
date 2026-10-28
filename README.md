@@ -20,7 +20,7 @@
 <p align="center">
   <a href="https://github.com/stanczykwyatt/copy-2fa/actions/workflows/ci.yml"><img src="https://github.com/stanczykwyatt/copy-2fa/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://github.com/stanczykwyatt/copy-2fa/releases/latest"><img src="https://img.shields.io/github/v/release/stanczykwyatt/copy-2fa" alt="Latest release"></a>
-  <img src="https://img.shields.io/badge/macOS-14%2B-111?logo=apple" alt="macOS 14 or later">
+  <img src="https://img.shields.io/badge/macOS-14%2B-111" alt="macOS 14 or later">
   <img src="https://img.shields.io/badge/network%20access-none-2ea44f" alt="No network access">
   <img src="https://img.shields.io/badge/dependencies-0-2ea44f" alt="No dependencies">
   <a href="LICENSE"><img src="https://img.shields.io/github/license/stanczykwyatt/copy-2fa" alt="MIT License"></a>
@@ -29,39 +29,41 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/notice-dark.png">
-    <img src="docs/screenshots/notice-light.png" width="320" alt="The notice Copy 2FA shows after copying a code: 482913, copied from GitHub, Mail, just now">
+    <img src="docs/screenshots/notice-light.png" width="320" alt="The notice Copy 2FA shows after copying a code: 482913, copied from Harbor Bank, Mail, just now">
   </picture>
   <br>
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/picker-dark.png">
-    <img src="docs/screenshots/picker-light.png" width="480" alt="The authenticator search, listing GitHub, Google, Amazon Web Services, Chase and a counter-based account with their codes">
+    <img src="docs/screenshots/picker-light.png" width="480" alt="The authenticator search, listing five example accounts with their codes">
   </picture>
 </p>
 
 ---
 
-Tired of digging through your emails and texts for a 2FA code every five seconds? Use Copy 2FA! It's built for macOS, and because it's open source, you can rest easy knowing your 2FA codes are never accessible to anyone but you. Setup is easy: download Copy 2FA and add your email accounts to Apple Mail. When you press the hotkey, Copy 2FA finds the most recent code in Mail or Messages and copies it to your clipboard. Codes from authenticator apps work too: bring your accounts over once, then pick one with a second shortcut.
+Tired of digging through your emails and texts for a 2FA code every five seconds? Use Copy 2FA! It's built for macOS, it has no internet access, so your codes stay on your Mac, and it's open source, so anyone can check. Setup is easy: download Copy 2FA and add your email accounts to Apple Mail. When you press the hotkey, Copy 2FA finds the most recent code in Mail or Messages and copies it to your clipboard. Codes from authenticator apps work too: bring your accounts over once, then pick one with a second shortcut.
+
+If Copy 2FA saves you time, [starring the repo](https://github.com/stanczykwyatt/copy-2fa/stargazers) helps other people find it.
 
 ## Features
 
 - **One shortcut for any code.** Press **⌃⇧C** in any app to copy the newest verification code from Mail or Messages. Works with Gmail, iCloud, Outlook, Yahoo and any other account you've added to Apple Mail, and with texted codes from banks, Duo and most websites.
 - **A built-in authenticator.** Press **⌃⇧A**, use Touch ID, type a few letters and press Return. Supports time-based (TOTP) and counter-based (HOTP) codes.
 - **Brings your accounts over.** Imports from Google Authenticator, Apple Passwords, 1Password, Bitwarden, Aegis, 2FAS, andOTP and [rsc/2fa](https://github.com/rsc/2fa), or from a QR code screenshot.
-- **Shows where every code came from,** like *Copied from GitHub · Mail · just now*.
+- **Shows where every code came from,** like *Copied from Harbor Bank · Mail · just now*.
 - **Private by design.** No internet access, enforced by the macOS sandbox. Nothing it reads is saved, and the clipboard clears itself.
 - **Free and open source.** No account, no subscription, no tracking.
 
 ## How it compares
 
-| | Copy 2FA | [rsc/2fa](https://github.com/rsc/2fa) | macOS AutoFill |
-|---|:---:|:---:|:---:|
-| Codes from email | ✅ | — | Safari and supported apps |
-| Codes from texts | ✅ | — | Safari and supported apps |
-| Authenticator codes | ✅ TOTP and HOTP | ✅ TOTP and HOTP | TOTP, in Passwords |
-| Works in Chrome, Firefox, Arc and desktop apps | ✅ | From Terminal | Some apps |
-| Secrets encrypted, behind Touch ID | ✅ | Plain-text file | ✅ |
-| No Terminal needed | ✅ | — | ✅ |
-| Open source | ✅ | ✅ | — |
+| | Copy 2FA | [rsc/2fa](https://github.com/rsc/2fa) |
+|---|:---:|:---:|
+| Codes from email | ✅ | — |
+| Codes from texts | ✅ | — |
+| Authenticator codes | ✅ TOTP and HOTP | ✅ TOTP and HOTP |
+| Works in any browser or app | ✅ | From Terminal |
+| Secrets encrypted, behind Touch ID | ✅ | Stored in an unencrypted file |
+| No Terminal needed | ✅ | — |
+| Open source | ✅ | ✅ |
 
 rsc/2fa is a great command-line tool. Copy 2FA is for people who'd rather press a shortcut, and it can import your `~/.2fa` keys in one step.
 
@@ -71,7 +73,7 @@ rsc/2fa is a great command-line tool. Copy 2FA is for people who'd rather press 
 2. Move **Copy 2FA** to your Applications folder and open it.
 3. Allow Mail access when asked, then press **⌃⇧C** the next time a code arrives.
 
-> **About the security warning:** The first time you open Copy 2FA, macOS may say Apple couldn't verify that it's free of malware. That's not because anything is wrong with the app. Apple charges developers $99 a year to verify their apps, and Copy 2FA hasn't paid that fee yet. The code is fully open source, so you can read every line or build the app yourself. To open it, go to **System Settings → Privacy & Security** and click **Open Anyway**.
+> **About the security warning:** The first time you open Copy 2FA, macOS may say Apple couldn't verify that it's free of malware. It shows up because Copy 2FA isn't notarized yet: Apple charges developers $99 a year for that, and Copy 2FA hasn't paid the fee. The code is fully open source, so you can read every line or build the app yourself. To open it, go to **System Settings → Privacy & Security** and click **Open Anyway**.
 
 ### Build from source
 
@@ -166,4 +168,6 @@ Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
-[MIT](LICENSE)
+Copy 2FA is released under the [MIT License](LICENSE) and is provided as is, without warranty of any kind.
+
+Copy 2FA is an independent project. It isn't affiliated with, endorsed by or sponsored by Apple Inc. or any other company named here. Apple, Mac, macOS, iMessage and Touch ID are trademarks of Apple Inc., registered in the U.S. and other countries. Other product names are trademarks of their owners and are used here only to describe compatibility.
