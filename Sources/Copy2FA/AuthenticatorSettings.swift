@@ -1,4 +1,4 @@
-import CodeCallerCore
+import Copy2FACore
 import SwiftUI
 
 struct AuthenticatorSettings: View {
@@ -91,7 +91,7 @@ struct AuthenticatorSettings: View {
                 if let pendingDeletion { actions.deleteAccount(pendingDeletion) }
             }
         } message: {
-            Text("You'll need to set it up again to get its codes from Code Caller.")
+            Text("You'll need to set it up again to get its codes from Copy 2FA.")
         }
     }
 }

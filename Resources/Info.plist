@@ -5,17 +5,18 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-	<string>Code Caller</string>
+	<string>Copy 2FA</string>
 	<key>CFBundleExecutable</key>
-	<string>CodeCaller</string>
+	<string>Copy2FA</string>
 	<key>CFBundleIconFile</key>
 	<string>AppIcon</string>
+	<!-- Kept from the app's original name, Code Caller, so settings, permissions and accounts carry over. -->
 	<key>CFBundleIdentifier</key>
 	<string>com.stanczykwyatt.CodeCaller</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>Code Caller</string>
+	<string>Copy 2FA</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -29,7 +30,7 @@
 	<key>LSUIElement</key>
 	<true/>
 	<key>NSAppleEventsUsageDescription</key>
-	<string>Code Caller looks at your newest Mail messages, only when you press its shortcut, to find a verification code. It never changes, sends or saves your email.</string>
+	<string>Copy 2FA looks at your newest Mail messages, only when you press its shortcut, to find a verification code. It never changes, sends or saves your email.</string>
 	<key>NSHumanReadableCopyright</key>
 	<string>Copyright © 2026 stanczykwyatt. MIT License.</string>
 </dict>

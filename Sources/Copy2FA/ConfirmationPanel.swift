@@ -144,11 +144,11 @@ extension Confirmation {
         case .copied(let code, let sender, let source, let received):
             Self.copiedDetail(showsCode: code != nil, sender: sender, source: source, received: received)
         case .nothingFound(let minutes, let places): "Nothing in the last \(minutes) minutes of \(places)"
-        case .needsMailAccess: "Allow it in Code Caller Settings"
-        case .needsMessagesAccess: "Turn on Full Disk Access in Code Caller Settings"
-        case .messagesFailed: "A macOS update may have changed Messages. Check for a Code Caller update."
-        case .mailMissing: "Code Caller reads codes from Apple Mail"
-        case .noSources: "Turn on Mail or Messages in Code Caller Settings"
+        case .needsMailAccess: "Allow it in Copy 2FA Settings"
+        case .needsMessagesAccess: "Turn on Full Disk Access in Copy 2FA Settings"
+        case .messagesFailed: "A macOS update may have changed Messages. Check for a Copy 2FA update."
+        case .mailMissing: "Copy 2FA reads codes from Apple Mail"
+        case .noSources: "Turn on Mail or Messages in Copy 2FA Settings"
         case .failed: "Try again in a moment"
         }
     }

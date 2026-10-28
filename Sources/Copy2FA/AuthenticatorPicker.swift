@@ -1,10 +1,10 @@
 import AppKit
-import CodeCallerCore
+import Copy2FACore
 import SwiftUI
 
 /// A Spotlight-style search panel for picking an authenticator account.
 ///
-/// The panel takes keyboard focus without activating Code Caller, so the app you
+/// The panel takes keyboard focus without activating Copy 2FA, so the app you
 /// were in stays in front and ⌘V pastes there as soon as the code is copied.
 @MainActor
 final class AuthenticatorPicker: NSObject, NSWindowDelegate {
@@ -138,7 +138,7 @@ private struct PickerView: View {
     @ViewBuilder
     private var list: some View {
         if matches.isEmpty {
-            Text(accounts.isEmpty ? "No accounts yet. Add them in Code Caller Settings." : "No matching accounts")
+            Text(accounts.isEmpty ? "No accounts yet. Add them in Copy 2FA Settings." : "No matching accounts")
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity)
                 .padding(18)

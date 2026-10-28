@@ -3,7 +3,7 @@ import Foundation
 import ImageIO
 import Testing
 import UniformTypeIdentifiers
-@testable import CodeCallerCore
+@testable import Copy2FACore
 
 @Suite("Authenticator codes")
 struct AuthenticatorCodes {

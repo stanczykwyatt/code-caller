@@ -23,7 +23,7 @@ public enum ImportError: Error, Equatable {
     case encrypted
     /// The image has no QR code in it.
     case noQRCode
-    /// Not a format Code Caller knows.
+    /// Not a format Copy 2FA knows.
     case unrecognized
 }
 
