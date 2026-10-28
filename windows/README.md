@@ -8,7 +8,7 @@ This is the Windows version of [Copy 2FA](../README.md). It finds codes with the
 
 1. Copy 2FA sits in the system tray, next to the clock.
 2. Press **Ctrl+Shift+C** in any app.
-3. Copy 2FA finds the newest code in your inbox or junk folder, copies it and shows where it came from, like *Copied from Outlook · GitHub · just now*.
+3. Copy 2FA finds the newest code in your inbox or junk folder, copies it and shows where it came from, like *Copied from Outlook · Harbor Bank · just now*.
 4. Paste with **Ctrl+V**. The clipboard clears itself a minute later.
 
 If the code hasn't arrived yet, Copy 2FA looks again a few times over about six seconds.
@@ -58,9 +58,9 @@ For accounts that use an authenticator app, press **Ctrl+Shift+A** and confirm i
 
 ## Install
 
-Download `Copy2FA.exe` for your PC from [Releases](https://github.com/stanczykwyatt/copy-2fa/releases) (x64 for most PCs, Arm64 for Snapdragon and other Arm PCs), put it somewhere it can stay, such as a folder in your user directory, and run it. Nothing else needs to be installed.
+Download the zip for your PC from [Releases](https://github.com/stanczykwyatt/copy-2fa/releases) (x64 for most PCs, Arm64 for Snapdragon and other Arm PCs) and unzip it somewhere it can stay, such as a folder in your user directory. Then run `Copy2FA.exe`. Nothing else needs to be installed.
 
-> **About the SmartScreen warning:** The first time you run Copy 2FA, Windows may say *Windows protected your PC*. That's not because anything is wrong with the app. Copy 2FA isn't code-signed, because a code signing certificate costs money and Copy 2FA hasn't bought one. The source is fully open, so you can read every line or build the app yourself. To run it, click **More info**, then **Run anyway**.
+> **About the SmartScreen warning:** The first time you run Copy 2FA, Windows may say *Windows protected your PC*. It shows up because Copy 2FA isn't code-signed yet: a code signing certificate costs money, and Copy 2FA hasn't bought one. The source is fully open, so you can read every line or build the app yourself. To run it, click **More info**, then **Run anyway**.
 
 Copy 2FA needs Windows 10 version 2004 or later, or Windows 11. The authenticator needs Windows Hello, and a PIN is enough.
 
@@ -101,3 +101,9 @@ Settings are saved in `%LOCALAPPDATA%\Copy2FA\settings.json`, with nothing sensi
 | `Copy2FA.Core` | Code detection, the mbox reader, TOTP and HOTP, importers and settings. Cross-platform. |
 | `Copy2FA.Core.Tests` | xunit tests, including every macOS code detection test and the RFC 4226 and RFC 6238 test vectors. |
 | `Copy2FA` | The Windows tray app. |
+
+## License
+
+Copy 2FA is released under the [MIT License](../LICENSE) and is provided as is, without warranty of any kind. The Windows build includes the .NET runtime, whose license notices ship with it and are in [licenses](licenses).
+
+Copy 2FA isn't affiliated with, endorsed by or sponsored by Microsoft, Mozilla or any other company named here. Windows, Windows Hello and Outlook are trademarks of Microsoft Corporation, and Thunderbird is a trademark of the Mozilla Foundation. They're used here only to describe compatibility.
