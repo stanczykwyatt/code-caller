@@ -15,6 +15,10 @@
   <a href="windows/README.md">Windows preview</a>
   &nbsp;·&nbsp;
   <a href="https://stanczykwyatt.github.io/copy-2fa/">Website</a>
+  &nbsp;·&nbsp;
+  <a href="https://github.com/users/stanczykwyatt/projects/1">Roadmap</a>
+  &nbsp;·&nbsp;
+  <a href="https://github.com/stanczykwyatt/copy-2fa/discussions">Discussions</a>
 </p>
 
 <p align="center">
@@ -168,7 +172,7 @@ Please [open an issue](https://github.com/stanczykwyatt/copy-2fa/issues/new/choo
 
 ## Contributing
 
-Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md).
+Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md), and the [roadmap](https://github.com/users/stanczykwyatt/projects/1) for what's planned. Ideas go in [Discussions](https://github.com/stanczykwyatt/copy-2fa/discussions/64).
 
 ## License
 
