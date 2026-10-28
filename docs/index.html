@@ -101,9 +101,8 @@
       flex-direction: column;
       overflow-y: auto;
       padding: clamp(16px, 3vmin, 30px) clamp(18px, 4vmin, 40px);
-      scrollbar-width: none;
+      scrollbar-width: thin;
     }
-    .content::-webkit-scrollbar { display: none; }
 
     .label {
       font: 12px/1.4 var(--mono);
@@ -188,6 +187,10 @@
       .lede { margin-bottom: 14px; }
       .notice { margin-bottom: 16px; }
       .actions { margin-bottom: 10px; }
+    }
+    @media (max-height: 560px) {
+      .icon { display: none; }
+      h1 { margin-top: 0; }
     }
     .foot p { margin: 0; font: 11px/1.6 var(--mono); letter-spacing: 0.03em; color: rgba(255, 255, 255, 0.4); }
     .foot a { color: rgba(255, 255, 255, 0.7); }
