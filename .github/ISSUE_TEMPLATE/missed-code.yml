@@ -1,5 +1,5 @@
 name: Missed or wrong code
-description: Code Caller didn't find a code, or copied the wrong one.
+description: Copy 2FA didn't find a code, or copied the wrong one.
 labels: [code detection]
 body:
   - type: markdown

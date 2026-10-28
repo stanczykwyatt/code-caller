@@ -1,5 +1,5 @@
 name: Feature request
-description: Suggest an idea for Code Caller.
+description: Suggest an idea for Copy 2FA.
 labels: [enhancement]
 body:
   - type: textarea
