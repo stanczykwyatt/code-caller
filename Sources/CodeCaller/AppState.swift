@@ -28,6 +28,7 @@ protocol SettingsActions: AnyObject {
     func unlockVault()
     func lockVault()
     func importAccounts()
+    func importFromTwoFA()
     func pasteAccounts()
     func addAccount(_ account: OTPAccount)
     func deleteAccount(_ account: OTPAccount)

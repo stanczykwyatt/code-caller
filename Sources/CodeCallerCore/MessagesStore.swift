@@ -22,12 +22,18 @@ public enum MessagesStoreError: Error, Equatable {
     case unreadable(String)
 }
 
+public enum UserHome {
+    /// The user's real home folder. Inside the App Sandbox, `NSHomeDirectory()` is the app's container instead.
+    public static var path: String {
+        getpwuid(getuid()).flatMap { String(validatingCString: $0.pointee.pw_dir) } ?? NSHomeDirectory()
+    }
+}
+
 /// Reads recent incoming texts from the Messages database, read-only.
 public enum MessagesStore {
     /// `~/Library/Messages/chat.db` in the real home folder, not the app's sandbox container.
     public static var defaultPath: String {
-        let home = getpwuid(getuid()).flatMap { String(validatingCString: $0.pointee.pw_dir) } ?? NSHomeDirectory()
-        return (home as NSString).appendingPathComponent("Library/Messages/chat.db")
+        (UserHome.path as NSString).appendingPathComponent("Library/Messages/chat.db")
     }
 
     /// Whether macOS currently lets this app open the database.
