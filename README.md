@@ -162,6 +162,10 @@ Yes, in preview. It reads Outlook and Thunderbird and has the same authenticator
 **It missed a code or copied the wrong one.**
 Please [open an issue](https://github.com/stanczykwyatt/copy-2fa/issues/new/choose) with the text around the code. Remove the real code and personal details first.
 
+## More free Mac utilities
+
+- **[Show Desktop](https://github.com/stanczykwyatt/show-desktop):** hide every window with one click or ⌃⇧D, then bring them all back exactly as they were. Like Windows+D for the Mac, with no internet access either.
+
 ## Contributing
 
 Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md).
