@@ -75,7 +75,6 @@ struct OTPAuthLinks {
     }
 
     @Test(arguments: [
-        "otpauth://hotp/GitHub?secret=JBSWY3DPEHPK3PXP&counter=1",
         "otpauth://totp/GitHub?issuer=GitHub",
         "otpauth://totp/GitHub?secret=JBSWY3DPEHPK3PXP&algorithm=MD5",
         "otpauth://totp/GitHub?secret=JBSWY3DPEHPK3PXP&digits=12",
@@ -98,19 +97,22 @@ struct ImportingAccounts {
         #expect(account.secret == Base32.decode("JBSWY3DPEHPK3PXP"))
     }
 
-    @Test func googleExportSkipsCounterAccounts() throws {
+    @Test func googleExportIncludesCounterAccounts() throws {
         func field(_ number: Int, _ bytes: [UInt8]) -> [UInt8] { [UInt8(number << 3 | 2), UInt8(bytes.count)] + bytes }
         func varint(_ number: Int, _ value: UInt8) -> [UInt8] { [UInt8(number << 3), value] }
         let secret = [UInt8](Base32.decode("JBSWY3DPEHPK3PXP")!)
         let totp = field(1, secret) + field(2, Array("wyatt".utf8)) + field(3, Array("GitHub".utf8)) + varint(4, 2) + varint(5, 2) + varint(6, 2)
-        let hotp = field(1, secret) + field(2, Array("bank".utf8)) + varint(6, 1)
+        let hotp = field(1, secret) + field(2, Array("bank".utf8)) + varint(6, 1) + varint(7, 5)
         let payload = field(1, totp) + field(1, hotp) + varint(2, 1)
         let link = "otpauth-migration://offline?data=" + Data(payload).base64EncodedString()
             .addingPercentEncoding(withAllowedCharacters: .alphanumerics)!
 
         let result = try AccountImporter.accounts(fromText: link)
-        #expect(result.accounts.count == 1)
-        #expect(result.skipped == 1)
+        #expect(result.accounts.count == 2)
+        #expect(result.skipped == 0)
+        #expect(result.accounts.last?.kind == .hotp)
+        #expect(result.accounts.last?.counter == 5)
+        #expect(result.accounts.first?.kind == .totp)
         #expect(result.accounts.first?.algorithm == .sha256)
         #expect(result.accounts.first?.digits == 8)
         #expect(result.accounts.first?.displayName == "GitHub (wyatt)")
@@ -125,8 +127,9 @@ struct ImportingAccounts {
             Old site,https://old.example/,wyatt,pw,,otpauth://hotp/Old?secret=JBSWY3DPEHPK3PXP
             """
         let result = try AccountImporter.accounts(fromText: csv)
-        #expect(result.accounts.map(\.displayName) == ["GitHub (wyatt)"])
-        #expect(result.skipped == 1)
+        #expect(result.accounts.map(\.displayName) == ["GitHub (wyatt)", "Old site (Old)"])
+        #expect(result.accounts.map(\.kind) == [.totp, .hotp])
+        #expect(result.skipped == 0)
     }
 
     @Test func bitwardenCSVWithBareSecret() throws {
@@ -160,10 +163,12 @@ struct ImportingAccounts {
             ]}}
             """
         let result = try AccountImporter.accounts(fromText: json)
-        #expect(result.accounts.count == 1)
+        #expect(result.accounts.count == 2)
         #expect(result.accounts.first?.algorithm == .sha512)
         #expect(result.accounts.first?.digits == 7)
-        #expect(result.skipped == 1)
+        #expect(result.accounts.last?.kind == .hotp)
+        #expect(result.accounts.last?.counter == 3)
+        #expect(result.skipped == 0)
     }
 
     @Test func twoFASJSON() throws {
@@ -305,5 +310,60 @@ extension ImportingAccounts {
         CGImageDestinationAddImage(destination, cgImage, nil)
         try #require(CGImageDestinationFinalize(destination))
         return data as Data
+    }
+}
+
+@Suite("Counter-based codes")
+struct CounterBasedCodes {
+    /// The test vectors from RFC 4226, appendix D.
+    @Test func rfc4226() {
+        let account = OTPAccount(issuer: "", name: "", secret: Data("12345678901234567890".utf8), kind: .hotp)
+        let expected = ["755224", "287082", "359152", "969429", "338314", "254676", "287922", "162583", "399871", "520489"]
+        #expect((0..<10).map { account.code(forCounter: UInt64($0)) } == expected)
+    }
+
+    @Test func eachCodeMovesTheCounterOn() {
+        let account = OTPAccount(issuer: "", name: "", secret: Data("12345678901234567890".utf8), kind: .hotp, counter: 3)
+        let first = account.usingNextCode()
+        let second = first.account.usingNextCode()
+        #expect(first.code == "969429")
+        #expect(second.code == "338314")
+        #expect(second.account.counter == 5)
+    }
+
+    @Test func link() throws {
+        let account = try #require(OTPAuthURL.account(from: "otpauth://hotp/Bank:wyatt?secret=JBSWY3DPEHPK3PXP&counter=7&digits=8"))
+        #expect(account.kind == .hotp)
+        #expect(account.counter == 7)
+        #expect(account.digits == 8)
+        #expect(account.displayName == "Bank (wyatt)")
+    }
+
+    @Test func twoFASAndAndOTP() throws {
+        let twoFAS = """
+            {"schemaVersion": 4, "services": [{"name": "Bank", "secret": "JBSWY3DPEHPK3PXP", "otp": {"tokenType": "HOTP", "counter": 2}}]}
+            """
+        #expect(try AccountImporter.accounts(fromText: twoFAS).accounts.first?.counter == 2)
+        let andOTP = """
+            [{"secret": "JBSWY3DPEHPK3PXP", "label": "Bank:wyatt", "digits": 6, "type": "HOTP", "algorithm": "SHA1", "counter": 9}]
+            """
+        let account = try #require(try AccountImporter.accounts(fromText: andOTP).accounts.first)
+        #expect(account.kind == .hotp)
+        #expect(account.counter == 9)
+    }
+
+    /// Version 0.2.0 saved accounts without a kind or counter.
+    @Test func accountsSavedBeforeCountersStillLoad() throws {
+        let saved = """
+            [{"id": "BFE4A033-A813-46B7-821B-71893961B7B0", "issuer": "GitHub", "name": "wyatt", "secret": "SGVsbG8h3q2+7w==",
+              "algorithm": "SHA1", "digits": 6, "period": 30}]
+            """
+        let accounts = try JSONDecoder().decode([OTPAccount].self, from: Data(saved.utf8))
+        #expect(accounts.first?.kind == .totp)
+        #expect(accounts.first?.counter == 0)
+        #expect(accounts.first?.secret == Base32.decode("JBSWY3DPEHPK3PXP"))
+        // And they save and load again unchanged.
+        let again = try JSONDecoder().decode([OTPAccount].self, from: try JSONEncoder().encode(accounts))
+        #expect(again == accounts)
     }
 }

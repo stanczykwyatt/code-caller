@@ -22,6 +22,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var welcomeWindow: NSWindow?
     private var lookup: Task<Void, Never>?
     private var shortcutRecorder: Any?
+    private var isCopyingAuthenticatorCode = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         statusItem = makeStatusItem()
@@ -158,9 +159,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func copyAuthenticatorCode(_ account: OTPAccount) {
-        let notice = copy(account.code(), sender: account.displayName, source: .authenticator, received: nil)
-        confirmation.show(notice)
-        announce(notice)
+        // Pressing Return twice must not use up two counter-based codes.
+        guard !isCopyingAuthenticatorCode else { return }
+        isCopyingAuthenticatorCode = true
+        Task {
+            defer { isCopyingAuthenticatorCode = false }
+            do {
+                let code = try await vault.code(for: account)
+                picker.close()
+                let notice = copy(code, sender: account.displayName, source: .authenticator, received: nil)
+                confirmation.show(notice)
+                announce(notice)
+            } catch {
+                picker.close()
+                showAlert("Couldn't Get the Next Code", "The keychain didn't save the account's new counter, so no code was copied. Try again.")
+            }
+        }
     }
 
     /// Saves imported accounts and reports what happened. `clearsPasteboard` removes a pasted
@@ -178,7 +192,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 lines.append(duplicates == 1 ? "1 was already in Code Caller." : "\(duplicates) were already in Code Caller.")
             }
             if result.skipped > 0 {
-                lines.append("\(result.skipped) couldn't be used, because they're counter-based or Steam codes, or are missing a valid setup key.")
+                lines.append("\(result.skipped) couldn't be used, because they're Steam codes or are missing a valid setup key.")
             }
             if fromFile {
                 lines.append("Delete the file you imported now. Anyone who finds it could copy your codes.")

@@ -34,7 +34,8 @@ public enum GoogleAuthenticatorExport {
         var issuer = ""
         var algorithm = OTPAlgorithm.sha1
         var digits = 6
-        var isTimeBased = true
+        var kind = OTPKind.totp
+        var counter: UInt64 = 0
 
         while let field = reader.nextField() {
             switch (field.number, field.wireType) {
@@ -49,12 +50,12 @@ public enum GoogleAuthenticatorExport {
                 default: return nil  // MD5 isn't supported by anything else either.
                 }
             case (5, 0): digits = reader.varint() == 2 ? 8 : 6
-            case (6, 0): isTimeBased = reader.varint() != 1  // 1 is a counter-based HOTP account.
+            case (6, 0): kind = reader.varint() == 1 ? .hotp : .totp
+            case (7, 0): counter = reader.varint() ?? 0
             default:
                 guard reader.skip(wireType: field.wireType) else { return nil }
             }
         }
-        guard isTimeBased else { return nil }
 
         // Names often repeat the issuer, as in "GitHub:wyatt".
         if let colon = name.firstIndex(of: ":") {
@@ -64,7 +65,7 @@ public enum GoogleAuthenticatorExport {
                 name = String(name[name.index(after: colon)...])
             }
         }
-        let account = OTPAccount(issuer: issuer, name: name, secret: secret, algorithm: algorithm, digits: digits)
+        let account = OTPAccount(issuer: issuer, name: name, secret: secret, algorithm: algorithm, digits: digits, kind: kind, counter: counter)
         return account.isValid ? account : nil
     }
 

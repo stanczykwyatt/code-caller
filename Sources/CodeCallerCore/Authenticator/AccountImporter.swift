@@ -4,7 +4,7 @@ import ImageIO
 
 public struct ImportResult: Sendable, Equatable {
     public var accounts: [OTPAccount]
-    /// Entries that were found but can't be used, like counter-based or Steam accounts.
+    /// Entries that were found but can't be used, like Steam accounts or ones without a valid secret.
     public var skipped: Int
 
     public init(accounts: [OTPAccount] = [], skipped: Int = 0) {
@@ -264,10 +264,10 @@ enum JSONExports {
         var result = ImportResult()
         for entry in entries {
             let info = entry["info"] as? [String: Any] ?? [:]
-            let account = (entry["type"] as? String)?.lowercased() == "totp" ? makeAccount(
-                issuer: entry["issuer"], name: entry["name"], secret: info["secret"],
-                algorithm: info["algo"], digits: info["digits"], period: info["period"]
-            ) : nil
+            let account = makeAccount(
+                type: entry["type"], issuer: entry["issuer"], name: entry["name"], secret: info["secret"],
+                algorithm: info["algo"], digits: info["digits"], period: info["period"], counter: info["counter"]
+            )
             if let account { result.accounts.append(account) } else { result.skipped += 1 }
         }
         return result
@@ -277,11 +277,10 @@ enum JSONExports {
         var result = ImportResult()
         for service in services {
             let otp = service["otp"] as? [String: Any] ?? [:]
-            let type = (otp["tokenType"] as? String)?.uppercased() ?? "TOTP"
-            let account = type == "TOTP" ? makeAccount(
-                issuer: otp["issuer"] ?? service["name"], name: otp["account"], secret: service["secret"],
-                algorithm: otp["algorithm"], digits: otp["digits"], period: otp["period"]
-            ) : nil
+            let account = makeAccount(
+                type: otp["tokenType"], issuer: otp["issuer"] ?? service["name"], name: otp["account"], secret: service["secret"],
+                algorithm: otp["algorithm"], digits: otp["digits"], period: otp["period"], counter: otp["counter"]
+            )
             if let account { result.accounts.append(account) } else { result.skipped += 1 }
         }
         return result
@@ -290,23 +289,31 @@ enum JSONExports {
     private static func andOTP(_ entries: [[String: Any]]) -> ImportResult {
         var result = ImportResult()
         for entry in entries {
-            let type = (entry["type"] as? String)?.uppercased() ?? "TOTP"
             var issuer = entry["issuer"] as? String ?? ""
             var name = entry["label"] as? String ?? ""
             if issuer.isEmpty, let colon = name.firstIndex(of: ":") {
                 issuer = String(name[..<colon])
                 name = String(name[name.index(after: colon)...])
             }
-            let account = type == "TOTP" ? makeAccount(
-                issuer: issuer, name: name, secret: entry["secret"],
-                algorithm: entry["algorithm"], digits: entry["digits"], period: entry["period"]
-            ) : nil
+            let account = makeAccount(
+                type: entry["type"], issuer: issuer, name: name, secret: entry["secret"],
+                algorithm: entry["algorithm"], digits: entry["digits"], period: entry["period"], counter: entry["counter"]
+            )
             if let account { result.accounts.append(account) } else { result.skipped += 1 }
         }
         return result
     }
 
-    private static func makeAccount(issuer: Any?, name: Any?, secret: Any?, algorithm: Any?, digits: Any?, period: Any?) -> OTPAccount? {
+    /// Builds an account from the fields apps name differently. Steam and other kinds return nil.
+    private static func makeAccount(
+        type: Any?, issuer: Any?, name: Any?, secret: Any?, algorithm: Any?, digits: Any?, period: Any?, counter: Any?
+    ) -> OTPAccount? {
+        let kind: OTPKind
+        switch (type as? String)?.lowercased() ?? "totp" {
+        case "totp": kind = .totp
+        case "hotp": kind = .hotp
+        default: return nil
+        }
         guard let secret = (secret as? String).flatMap(Base32.decode) else { return nil }
         let algorithmName = algorithm as? String ?? "SHA1"
         guard let algorithm = OTPAlgorithm(name: algorithmName) else { return nil }
@@ -316,7 +323,9 @@ enum JSONExports {
             secret: secret,
             algorithm: algorithm,
             digits: number(digits) ?? 6,
-            period: number(period) ?? 30
+            period: number(period) ?? 30,
+            kind: kind,
+            counter: number(counter).map { UInt64(max(0, $0)) } ?? 0
         )
         return account.isValid ? account : nil
     }

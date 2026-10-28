@@ -31,10 +31,8 @@ final class AuthenticatorPicker: NSObject, NSWindowDelegate {
         let background = NSVisualEffectView.panelBackground(cornerRadius: 16)
         let content = NSHostingView(rootView: PickerView(
             accounts: accounts,
-            copy: { [weak self] account in
-                self?.close()
-                self?.onCopy(account)
-            },
+            // The app closes the picker once the code is ready, since a counter-based code is saved first.
+            copy: { [weak self] account in self?.onCopy(account) },
             close: { [weak self] in self?.close() },
             resize: { [weak self] height in self?.resize(to: height) }
         ))
@@ -186,7 +184,6 @@ private struct AccountRow: View {
     let isSelected: Bool
 
     var body: some View {
-        let remaining = account.secondsRemaining(at: date)
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(account.issuer.isEmpty ? account.displayName : account.issuer)
@@ -200,12 +197,24 @@ private struct AccountRow: View {
                 }
             }
             Spacer(minLength: 8)
-            Text(Self.grouped(account.code(at: date)))
-                .font(.system(size: 22, weight: .semibold, design: .monospaced))
-                .foregroundStyle(remaining <= 5 ? Color.orange : Color.primary)
-            Countdown(fraction: Double(remaining) / Double(account.period))
-                .frame(width: 18, height: 18)
-                .accessibilityLabel("\(remaining) seconds left")
+            if account.kind == .hotp {
+                // Showing a counter-based code would use it up, so it's only made when copied.
+                Text("Next code")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                Image(systemName: "arrow.right.circle")
+                    .foregroundStyle(.secondary)
+                    .frame(width: 18, height: 18)
+                    .accessibilityHidden(true)
+            } else {
+                let remaining = account.secondsRemaining(at: date)
+                Text(Self.grouped(account.code(at: date)))
+                    .font(.system(size: 22, weight: .semibold, design: .monospaced))
+                    .foregroundStyle(remaining <= 5 ? Color.orange : Color.primary)
+                Countdown(fraction: Double(remaining) / Double(account.period))
+                    .frame(width: 18, height: 18)
+                    .accessibilityLabel("\(remaining) seconds left")
+            }
         }
         .padding(.horizontal, 12)
         .frame(height: 54)
