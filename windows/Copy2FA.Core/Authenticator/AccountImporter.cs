@@ -8,7 +8,8 @@ namespace Copy2FA.Core.Authenticator;
 /// <summary>
 /// Reads accounts from the files other authenticators and password managers export:
 /// lists of otpauth:// links, Google Authenticator transfer links, Safari or Apple
-/// Passwords CSV files, and unencrypted Bitwarden, Aegis, 2FAS and andOTP JSON files.
+/// Passwords CSV files, unencrypted Bitwarden, Aegis, 2FAS and andOTP JSON files, and
+/// the ~/.2fa file of the rsc/2fa command-line tool.
 /// </summary>
 /// <remarks>
 /// Password manager exports hold every password you have. The file is read in place,
@@ -53,6 +54,7 @@ public static class AccountImporter
         if (data.Span.StartsWith(Utf8Bom)) data = data[Utf8Bom.Length..];
         var first = data.Span.TrimStart(" \t\r\n"u8);
         if (!first.IsEmpty && first[0] is (byte)'{' or (byte)'[') return ImportJson(data);
+        if (TwoFaFile.TryRead(data.Span, out var twoFa)) return twoFa;
         if (CsvExport.TryRead(data.Span, out var csv)) return csv;
         return ImportLinks(data.Span);
     }

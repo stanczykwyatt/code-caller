@@ -666,3 +666,90 @@ public class ImportReviewFixes
         Assert.Equal(["A", "B"], result.Accounts.Select(account => account.Issuer));
     }
 }
+
+/// <summary>The ~/.2fa file of rsc/2fa: "name size key" or "name size key counter" on each line.</summary>
+public class TwoFaFileTests
+{
+    static ImportResult Import(string text) => AccountImporter.Import(Encoding.UTF8.GetBytes(text));
+
+    // Keys are "12345678901234567890" (the RFC test secret), "Hello!" plus four bytes, and "123456789".
+    const string File = """
+        github 6 JBSWY3DPEHPK3PXP
+        rfc 8 GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ
+        work-vpn 6 GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ 00000000000000000004
+        new-hotp 6 GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ 00000000000000000000
+        padded 7 GEZDGNBVGY3TQOI=
+
+        """;
+
+    [Fact]
+    public void ReadsTimeAndCounterBasedKeys()
+    {
+        var result = Import(File);
+        Assert.Equal(0, result.Skipped);
+        Assert.Equal(["github", "rfc", "work-vpn", "new-hotp", "padded"], result.Accounts.Select(a => a.Issuer));
+        // The name becomes the issuer; rsc/2fa has nothing else to call an account.
+        Assert.All(result.Accounts, account => Assert.Equal("", account.Name));
+        Assert.Equal([6, 8, 6, 6, 7], result.Accounts.Select(a => a.Digits));
+        Assert.Equal([OtpKind.Totp, OtpKind.Totp, OtpKind.Hotp, OtpKind.Hotp, OtpKind.Totp], result.Accounts.Select(a => a.Kind));
+        Assert.Equal("123456789"u8.ToArray(), result.Accounts[4].Secret);
+
+        // RFC 6238 Appendix B, SHA1 at 59 seconds.
+        Assert.Equal("94287082", Totp.Code(result.Accounts[1], DateTimeOffset.FromUnixTimeSeconds(59)));
+    }
+
+    [Fact]
+    public void CounterInTheFileIsTheLastOneUsed()
+    {
+        var result = Import(File);
+        var workVpn = result.Accounts[2];
+        Assert.Equal(5UL, workVpn.Counter);
+        // RFC 4226 Appendix D: counter 5 makes 254676.
+        Assert.Equal("254676", workVpn.TakeNextHotpCode());
+
+        // A key added with "2fa -add -hotp" starts at zero, so its first code uses counter 1.
+        var fresh = result.Accounts[3];
+        Assert.Equal(1UL, fresh.Counter);
+        Assert.Equal("287082", fresh.TakeNextHotpCode());
+    }
+
+    [Fact]
+    public void WindowsLineBreaksWork()
+    {
+        Assert.Equal(5, Import(File.ReplaceLineEndings("\r\n")).Accounts.Count);
+    }
+
+    [Fact]
+    public void KeysTooShortToBeRealAreSkipped()
+    {
+        var result = Import("github 6 JBSWY3DPEHPK3PXP\nshort 6 MZXW6YTBOI======\n");
+        Assert.Equal("github", Assert.Single(result.Accounts).Issuer);
+        Assert.Equal(1, result.Skipped);
+        Assert.Throws<ImportException>(() => Import("short 6 MZXW6YTBOI======\n"));
+    }
+
+    [Theory]
+    [InlineData("github 6 JBSWY3DPEHPK3PXP\nsome notes about my accounts\n")]
+    [InlineData("github 6 jbswy3dpehpk3pxp\n")]
+    [InlineData("github  6 JBSWY3DPEHPK3PXP\n")]
+    [InlineData("github 5 JBSWY3DPEHPK3PXP\n")]
+    [InlineData("github 9 JBSWY3DPEHPK3PXP\n")]
+    [InlineData("github 6 JBSWY3DPEHPK3PXP 0000000000000000004\n")]
+    [InlineData("github 6 JBSWY3DPEHPK3PXP 0000000000000000000x\n")]
+    [InlineData("github 6 JBSW=Y3DPEHPK3PXP\n")]
+    [InlineData("6 JBSWY3DPEHPK3PXP\n")]
+    [InlineData("\n\n")]
+    public void OnlyFilesWhereEveryLineMatchesAreRead(string text)
+    {
+        Assert.False(TwoFaFile.TryRead(Encoding.UTF8.GetBytes(text), out _));
+        Assert.Throws<ImportException>(() => Import(text));
+    }
+
+    [Fact]
+    public void CounterThatCantGoFurtherIsSkipped()
+    {
+        var result = Import("github 6 JBSWY3DPEHPK3PXP\nmaxed 6 JBSWY3DPEHPK3PXP 18446744073709551615\ntoobig 6 JBSWY3DPEHPK3PXP 99999999999999999999\n");
+        Assert.Single(result.Accounts);
+        Assert.Equal(2, result.Skipped);
+    }
+}
