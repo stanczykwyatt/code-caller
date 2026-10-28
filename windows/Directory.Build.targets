@@ -1,6 +1,6 @@
 <Project>
   <!-- Loaded after the SDK adds its default imports, so this removal sticks. The SDK imports its
-       HTTP namespace everywhere by default, and Code Caller never uses the network. -->
+       HTTP namespace everywhere by default, and Copy 2FA never uses the network. -->
   <ItemGroup>
     <Using Remove="System.Net.Http" />
   </ItemGroup>
