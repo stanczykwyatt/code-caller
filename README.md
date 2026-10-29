@@ -51,6 +51,7 @@ If Copy 2FA saves you time, [starring the repo](https://github.com/stanczykwyatt
 ## Features
 
 - **One shortcut for any code.** Press **⌃⇧C** in any app to copy the newest verification code from Mail or Messages. Works with Gmail, iCloud, Outlook, Yahoo and any other account you've added to Apple Mail, and with texted codes from banks, Duo and most websites.
+- **Recent codes, too.** Two codes arrived at once and the newest isn't the one you need? Choose **Recent Codes** in the menu bar, or give it a shortcut, to pick from the last five, each with where it came from.
 - **A built-in authenticator.** Press **⌃⇧A**, use Touch ID, type a few letters and press Return. Supports time-based (TOTP) and counter-based (HOTP) codes.
 - **Brings your accounts over.** Imports from Google Authenticator, Apple Passwords, 1Password, Bitwarden, Aegis, 2FAS, andOTP and [rsc/2fa](https://github.com/rsc/2fa), or from a QR code screenshot.
 - **Shows where every code came from,** like *Copied from Harbor Bank · Mail · just now*.
@@ -63,6 +64,7 @@ If Copy 2FA saves you time, [starring the repo](https://github.com/stanczykwyatt
 |---|:---:|:---:|
 | Codes from email | ✅ | — |
 | Codes from texts | ✅ | — |
+| Pick from your last few codes | ✅ | — |
 | Authenticator codes | ✅ TOTP and HOTP | ✅ TOTP and HOTP |
 | Works in any browser or app | ✅ | From Terminal |
 | Secrets encrypted, behind Touch ID | ✅ | Stored in an unencrypted file |
@@ -125,7 +127,7 @@ Copy 2FA is built so it *can't* misuse your data, not just so it promises not to
 - **Locked-down file access.** Even with Full Disk Access, the sandbox only lets Copy 2FA read your Messages database and files you pick to import.
 - **Authenticator secrets stay in your keychain,** are never synced or exported, need Touch ID to open, and are cleared from memory when the vault locks, your screen locks or your Mac sleeps.
 - **Careful with the clipboard.** Codes stay off Universal Clipboard, are hidden from clipboard managers and are cleared automatically.
-- **Hidden from screen sharing.** The code notice and the authenticator search ask macOS to keep them out of screenshots and recordings.
+- **Hidden from screen sharing.** The code notice, the recent codes list and the authenticator search ask macOS to keep them out of screenshots and recordings.
 - **Minimal permissions.** The shortcuts work without Accessibility or Input Monitoring access, so Copy 2FA never sees what you type.
 - **No dependencies.** Every line that runs is in this repository.
 
@@ -138,7 +140,7 @@ Check the app's permissions yourself with `codesign -d --entitlements - "/Applic
   <img src="docs/screenshots/settings-light.png" width="420" align="right" alt="Copy 2FA's General settings">
 </picture>
 
-**General:** change the shortcut, choose how far back to look (5 to 30 minutes), turn Mail and Messages on or off, choose when the clipboard clears, hide the code in the notice, and open Copy 2FA at login.
+**General:** change the shortcut, give Recent Codes a shortcut of its own, choose how far back to look (5 to 30 minutes), turn Mail and Messages on or off, choose when the clipboard clears, hide the code in the notice, and open Copy 2FA at login.
 
 **Authenticator:** change its shortcut, choose how often to ask for Touch ID, and add or delete accounts.
 
@@ -150,6 +152,9 @@ Copy 2FA finds codes in English, Spanish, French, German, Chinese, Japanese, Kor
 
 **How do I copy a 2FA code from email on a Mac?**
 Add your email account to Apple Mail, open Copy 2FA, and press ⌃⇧C when the code arrives. The newest code is copied, ready to paste with ⌘V.
+
+**How do I copy an older 2FA code, not the newest one?**
+Click the Copy 2FA icon in the menu bar and choose **Recent Codes**. It lists the last five codes from the past 10 minutes, newest first, with who sent each one and whether it came from Mail or Messages. Use the arrow keys and press Return, or click one, to copy it. You can also give Recent Codes its own shortcut in Settings.
 
 **Does it work with Gmail, Outlook and iCloud?**
 Yes. Copy 2FA reads every account you've added to Apple Mail, whatever the provider.

@@ -4,7 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Copy 2FA: copy 2FA codes on your Mac with one shortcut</title>
-  <meta name="description" content="Copy 2FA is a free, open-source Mac app. Press Control-Shift-C anywhere to copy the newest 2FA code from Mail or Messages, or pick one from its Touch ID authenticator. No internet access.">
+  <meta name="description" content="Copy 2FA is a free, open-source Mac app. Press Control-Shift-C anywhere to copy the newest 2FA code from Mail or Messages, pick from your last few codes, or use its Touch ID authenticator. No internet access.">
+  <meta name="keywords" content="copy 2fa code mac, 2fa code from email mac, verification code mac, autofill 2fa code mac, mac authenticator app, totp mac, one-time code mac, menu bar app">
   <link rel="canonical" href="https://stanczykwyatt.github.io/copy-2fa/">
   <link rel="icon" href="icon.png">
   <link rel="apple-touch-icon" href="icon.png">
@@ -25,13 +26,86 @@
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
     "name": "Copy 2FA",
-    "description": "Copy 2FA codes from Mail, Messages and a built-in authenticator with one keyboard shortcut.",
+    "alternateName": "Copy 2FA for Mac",
+    "description": "Copy 2FA codes from Mail, Messages and a built-in authenticator with one keyboard shortcut, or pick from your last few codes.",
     "operatingSystem": "macOS 14 or later",
-    "applicationCategory": "UtilitiesApplication",
+    "applicationCategory": "SecurityApplication",
     "url": "https://stanczykwyatt.github.io/copy-2fa/",
     "downloadUrl": "https://github.com/stanczykwyatt/copy-2fa/releases/latest/download/Copy-2FA.zip",
+    "softwareVersion": "0.4.0",
+    "datePublished": "2026-10-27",
+    "dateModified": "2026-10-28",
+    "releaseNotes": "https://github.com/stanczykwyatt/copy-2fa/releases/tag/v0.4.0",
+    "featureList": [
+      "Copy the newest 2FA code from Apple Mail or Messages with one shortcut",
+      "Pick from your last five codes, each with its sender and source",
+      "Built-in TOTP and HOTP authenticator behind Touch ID",
+      "Imports from Google Authenticator, Apple Passwords, 1Password, Bitwarden, Aegis, 2FAS and andOTP",
+      "No internet access, enforced by the macOS App Sandbox",
+      "Clears the clipboard and keeps codes off Universal Clipboard"
+    ],
+    "image": "https://stanczykwyatt.github.io/copy-2fa/icon.png",
+    "screenshot": "https://stanczykwyatt.github.io/copy-2fa/social.png",
     "license": "https://opensource.org/licenses/MIT",
-    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+    "isAccessibleForFree": true,
+    "author": {
+      "@type": "Person",
+      "name": "Wyatt Stanczyk",
+      "url": "https://wyattstanczyk.com"
+    },
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "USD"
+    }
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "How do I copy a 2FA code from email on a Mac?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Add your email account to Apple Mail, open Copy 2FA, and press Control-Shift-C when the code arrives. The newest code is copied, ready to paste with Command-V."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How do I copy an older 2FA code, not the newest one?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Click the Copy 2FA icon in the menu bar and choose Recent Codes. It lists the last five codes from the past 10 minutes, newest first, with who sent each one and whether it came from Mail or Messages. Pick one with the arrow keys and Return, or click it. You can also give Recent Codes its own shortcut in Settings."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Does it work with Gmail, Outlook and iCloud?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Yes. Copy 2FA reads every account you've added to Apple Mail, whatever the provider, and texted codes from Messages if you turn that on."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Can it read codes from Authy, Duo or Google Authenticator?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Those apps don't let other apps read their codes. You can move Google Authenticator accounts into Copy 2FA's own authenticator with its transfer QR code. Authy doesn't allow exports, so set those accounts up again with a new QR code. Duo passcodes sent by text are read from Messages."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Is Copy 2FA safe?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Copy 2FA runs in the macOS App Sandbox with no network access, so it can't send your codes anywhere. It only reads Mail and Messages when you ask, never saves what it reads, and keeps authenticator secrets in your keychain behind Touch ID. The code is open source."
+        }
+      }
+    ]
   }
   </script>
 
@@ -111,14 +185,18 @@
       text-decoration: none;
     }
     a.label:hover { color: #fff; }
-    .bar { display: flex; justify-content: space-between; }
+    .bar { display: flex; justify-content: space-between; gap: 12px; }
+    @media (max-width: 400px) {
+      .bar .new { display: none; }
+    }
 
     .center {
-      margin: auto 0;
+      min-height: calc(100% - 40px);
       padding: clamp(10px, 3vh, 28px) 0;
       display: flex;
       flex-direction: column;
       align-items: center;
+      justify-content: center;
       text-align: center;
     }
     .title { display: flex; flex-direction: column; align-items: center; margin-bottom: 8px; }
@@ -301,6 +379,23 @@
       from { opacity: 0; transform: translateY(-12px); }
       to { opacity: 1; transform: none; }
     }
+    /* Questions people search for, below the fold. */
+    .faq {
+      width: min(680px, 100%);
+      margin: clamp(20px, 5vh, 48px) auto clamp(16px, 3vh, 28px);
+      display: grid;
+      gap: 10px;
+    }
+    .faq h2 { margin: 0 0 6px; font-size: 22px; font-weight: 600; letter-spacing: -0.02em; text-align: center; }
+    .faq details {
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.04);
+      padding: 12px 16px;
+    }
+    .faq summary { cursor: pointer; font-weight: 600; }
+    .faq p { margin: 8px 0 0; color: rgba(255, 255, 255, 0.72); font-size: 15px; }
+
     .foot { display: grid; gap: 4px; text-align: center; }
     /* On shorter screens the icon moves beside the name, so everything still fits without scrolling. */
     @media (max-height: 760px), (max-width: 480px) {
@@ -348,7 +443,7 @@
     <div class="edge" aria-hidden="true"></div>
     <div class="content">
       <nav class="bar" aria-label="Site">
-        <span class="label">copy 2fa · v0.3</span>
+        <a class="label" href="https://github.com/stanczykwyatt/copy-2fa/releases/tag/v0.4.0">copy 2fa · v0.4<span class="new"> · what's new</span></a>
         <a class="label" href="https://github.com/stanczykwyatt/copy-2fa">github ↗</a>
       </nav>
 
@@ -410,8 +505,32 @@
         <p class="label">free · open source · macos 14+ · no internet access</p>
       </section>
 
+      <section class="faq" aria-labelledby="faq-title">
+        <h2 id="faq-title">Questions</h2>
+        <details>
+          <summary>How do I copy a 2FA code from email on a Mac?</summary>
+          <p>Add your email account to Apple Mail, open Copy 2FA, and press <kbd>⌃⇧C</kbd> when the code arrives. The newest code is copied, ready to paste with <kbd>⌘V</kbd>.</p>
+        </details>
+        <details>
+          <summary>How do I copy an older 2FA code, not the newest one?</summary>
+          <p>Click the Copy 2FA icon in the menu bar and choose Recent Codes. It lists the last five codes from the past 10 minutes, newest first, with who sent each one and whether it came from Mail or Messages. Pick one with the arrow keys and Return, or click it. You can also give Recent Codes its own shortcut in Settings.</p>
+        </details>
+        <details>
+          <summary>Does it work with Gmail, Outlook and iCloud?</summary>
+          <p>Yes. Copy 2FA reads every account you've added to Apple Mail, whatever the provider, and texted codes from Messages if you turn that on.</p>
+        </details>
+        <details>
+          <summary>Can it read codes from Authy, Duo or Google Authenticator?</summary>
+          <p>Those apps don't let other apps read their codes. You can move Google Authenticator accounts into Copy 2FA's own authenticator with its transfer QR code. Authy doesn't allow exports, so set those accounts up again with a new QR code. Duo passcodes sent by text are read from Messages.</p>
+        </details>
+        <details>
+          <summary>Is Copy 2FA safe?</summary>
+          <p>Copy 2FA runs in the macOS App Sandbox with no network access, so it can't send your codes anywhere. It only reads Mail and Messages when you ask, never saves what it reads, and keeps authenticator secrets in your keychain behind Touch ID. <a href="https://github.com/stanczykwyatt/copy-2fa">The code is open source</a>.</p>
+        </details>
+      </section>
+
       <footer class="foot">
-        <p>Reads codes from Mail and Messages, with a Touch ID authenticator built in. Also in <a href="https://github.com/stanczykwyatt/copy-2fa/blob/main/windows/README.md">preview for Windows</a>.</p>
+        <p>Reads codes from Mail and Messages, lists your last few, and has a Touch ID authenticator built in. Also in <a href="https://github.com/stanczykwyatt/copy-2fa/blob/main/windows/README.md">preview for Windows</a>.</p>
         <p>Copy 2FA collects no data, and this site has no cookies or tracking. MIT License. Not affiliated with Apple Inc.</p>
       </footer>
     </div>

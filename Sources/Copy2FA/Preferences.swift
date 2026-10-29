@@ -13,6 +13,16 @@ final class Preferences {
     var authenticatorShortcut: Shortcut {
         didSet { defaults.set(try? JSONEncoder().encode(authenticatorShortcut), forKey: Key.authenticatorShortcut) }
     }
+    /// Off until you record one, so Copy 2FA doesn't take over another key combination by itself.
+    var recentCodesShortcut: Shortcut? {
+        didSet {
+            if let recentCodesShortcut {
+                defaults.set(try? JSONEncoder().encode(recentCodesShortcut), forKey: Key.recentCodesShortcut)
+            } else {
+                defaults.removeObject(forKey: Key.recentCodesShortcut)
+            }
+        }
+    }
     /// How long the authenticator stays unlocked after Touch ID. Zero asks every time.
     var vaultUnlockSeconds: Int {
         didSet { defaults.set(vaultUnlockSeconds, forKey: Key.vaultUnlockSeconds) }
@@ -54,6 +64,7 @@ final class Preferences {
         shortcut = defaults.data(forKey: Key.shortcut).flatMap { try? JSONDecoder().decode(Shortcut.self, from: $0) } ?? .standard
         authenticatorShortcut = defaults.data(forKey: Key.authenticatorShortcut)
             .flatMap { try? JSONDecoder().decode(Shortcut.self, from: $0) } ?? .authenticator
+        recentCodesShortcut = defaults.data(forKey: Key.recentCodesShortcut).flatMap { try? JSONDecoder().decode(Shortcut.self, from: $0) }
         vaultUnlockSeconds = defaults.integer(forKey: Key.vaultUnlockSeconds)
         lookbackMinutes = defaults.integer(forKey: Key.lookbackMinutes)
         clearClipboardSeconds = defaults.integer(forKey: Key.clearClipboardSeconds)
@@ -76,6 +87,7 @@ final class Preferences {
     private enum Key {
         static let shortcut = "shortcut"
         static let authenticatorShortcut = "authenticatorShortcut"
+        static let recentCodesShortcut = "recentCodesShortcut"
         static let vaultUnlockSeconds = "vaultUnlockSeconds"
         static let lookbackMinutes = "lookbackMinutes"
         static let clearClipboardSeconds = "clearClipboardSeconds"

@@ -34,6 +34,7 @@ codesign -d --entitlements - "/Applications/Copy 2FA.app"
 
 - Mail and Messages are only read when you press the shortcut, and only messages from the last few minutes.
 - Messages are kept in memory just long enough to find a code. They're never logged or written to disk.
+- The recent codes list keeps the codes it shows in memory only while it's open. It closes when you click anywhere else, copy a code, lock the screen or put the Mac to sleep, or after a minute, and its codes are cleared when it closes.
 - The only value put into the AppleScript is a number of seconds, and the only value put into the Messages query is a timestamp, bound as a parameter. Message content can't change what either one does.
 - Message text from Messages is read straight from its archived bytes. Nothing is unarchived, so a crafted message can't make the app create objects.
 - The clipboard copy stays on this Mac (it's kept off Universal Clipboard) and is marked so clipboard managers skip it.

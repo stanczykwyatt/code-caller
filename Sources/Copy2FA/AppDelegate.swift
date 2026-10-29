@@ -12,12 +12,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let vault = Vault()
     private let hotKey = HotKey(id: 1)
     private let authenticatorHotKey = HotKey(id: 2)
+    private let recentCodesHotKey = HotKey(id: 3)
     private let clipboard = Clipboard()
     private lazy var confirmation = ConfirmationPanel()
     private lazy var picker = AuthenticatorPicker()
+    private lazy var recentCodes = RecentCodesPicker()
     private var statusItem: NSStatusItem?
     private var copyItem: NSMenuItem?
     private var authenticatorItem: NSMenuItem?
+    private var recentCodesItem: NSMenuItem?
     private var settingsWindow: NSWindow?
     private var welcomeWindow: NSWindow?
     private var lookup: Task<Void, Never>?
@@ -28,6 +31,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem = makeStatusItem()
         hotKey.onPress = { [weak self] in self?.copyLatestCode() }
         authenticatorHotKey.onPress = { [weak self] in self?.openAuthenticator() }
+        recentCodesHotKey.onPress = { [weak self] in self?.showRecentCodes() }
+        recentCodes.onCopy = { [weak self] found in self?.copyRecentCode(found) }
         picker.onCopy = { [weak self] account in self?.copyAuthenticatorCode(account) }
         picker.onClose = { [weak self] in
             guard let self else { return }
@@ -69,6 +74,41 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             show(result, options: options)
             lookup = nil
         }
+    }
+
+    /// Lists the last few codes, for when the newest isn't the one you need.
+    @objc private func showRecentCodes() {
+        if recentCodes.isShown {
+            recentCodes.close()
+            return
+        }
+        guard lookup == nil else { return }
+        picker.close()
+        let progress = Task {
+            try? await Task.sleep(for: .milliseconds(400))
+            if !Task.isCancelled { confirmation.show(.looking) }
+        }
+        let options = preferences.lookupOptions
+        lookup = Task {
+            let result = await CodeFinder.findRecent(options)
+            progress.cancel()
+            switch result {
+            case .found(let codes):
+                if options.readsMail, codes.contains(where: { $0.source == .mail }) { state.mailAccess = .allowed }
+                confirmation.hide()
+                recentCodes.show(codes, showsCodes: preferences.showsCodeInNotice, lookbackMinutes: options.lookbackMinutes)
+            case .problem(let problem):
+                show(problem, options: options)
+            }
+            lookup = nil
+        }
+    }
+
+    private func copyRecentCode(_ found: FoundCode) {
+        recentCodes.close()
+        let notice = copy(found.code, sender: found.sender, source: found.source, received: found.received)
+        confirmation.show(notice)
+        announce(notice)
     }
 
     private func show(_ result: Lookup, options: LookupOptions) {
@@ -127,6 +167,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
         stopRecordingShortcut()
+        recentCodes.close()
         Task {
             // "Every time" means every time, even if Settings already unlocked the vault.
             let fresh = preferences.vaultUnlockSeconds == 0
@@ -241,6 +282,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let copy = NSMenuItem(title: "Copy Latest Code", action: #selector(copyLatestCode), keyEquivalent: "")
         copy.target = self
         menu.addItem(copy)
+        let recent = NSMenuItem(title: "Recent Codes…", action: #selector(showRecentCodes), keyEquivalent: "")
+        recent.target = self
+        menu.addItem(recent)
         let authenticator = NSMenuItem(title: "Authenticator…", action: #selector(openAuthenticator), keyEquivalent: "")
         authenticator.target = self
         menu.addItem(authenticator)
@@ -253,13 +297,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         item.menu = menu
 
         copyItem = copy
+        recentCodesItem = recent
         authenticatorItem = authenticator
         return item
     }
 
     private func showShortcutsInMenu() {
-        for (item, shortcut) in [(copyItem, preferences.shortcut), (authenticatorItem, preferences.authenticatorShortcut)] {
-            let equivalent = shortcut.menuKeyEquivalent
+        let shortcuts = [
+            (copyItem, preferences.shortcut),
+            (authenticatorItem, preferences.authenticatorShortcut),
+            (recentCodesItem, preferences.recentCodesShortcut),
+        ]
+        for (item, shortcut) in shortcuts {
+            let equivalent = shortcut?.menuKeyEquivalent
             item?.keyEquivalent = equivalent?.key ?? ""
             item?.keyEquivalentModifierMask = equivalent?.modifiers ?? []
         }
@@ -307,6 +357,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         var taken: Set<ShortcutKind> = []
         if !hotKey.register(preferences.shortcut) { taken.insert(.copyCode) }
         if !authenticatorHotKey.register(preferences.authenticatorShortcut) { taken.insert(.authenticator) }
+        if let recent = preferences.recentCodesShortcut {
+            if !recentCodesHotKey.register(recent) { taken.insert(.recentCodes) }
+        } else {
+            recentCodesHotKey.unregister()
+        }
         state.takenShortcuts = taken
         showShortcutsInMenu()
     }
@@ -320,17 +375,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             stopRecordingShortcut()
             return true
         }
-        let other = kind == .copyCode ? preferences.authenticatorShortcut : preferences.shortcut
-        guard let shortcut = Shortcut(event: event), !shortcut.conflicts(with: other) else {
+        let others = ShortcutKind.allCases.filter { $0 != kind }.compactMap(shortcut(for:))
+        guard let shortcut = Shortcut(event: event), !others.contains(where: shortcut.conflicts(with:)) else {
             NSSound.beep()
             return true
         }
         switch kind {
         case .copyCode: preferences.shortcut = shortcut
         case .authenticator: preferences.authenticatorShortcut = shortcut
+        case .recentCodes: preferences.recentCodesShortcut = shortcut
         }
         stopRecordingShortcut()
         return true
+    }
+
+    private func shortcut(for kind: ShortcutKind) -> Shortcut? {
+        switch kind {
+        case .copyCode: preferences.shortcut
+        case .authenticator: preferences.authenticatorShortcut
+        case .recentCodes: preferences.recentCodesShortcut
+        }
     }
 
     // MARK: - Mail access
@@ -364,6 +428,7 @@ extension AppDelegate: SettingsActions {
         // Free the current shortcuts so they can be typed again, and only listen while this window is focused.
         hotKey.unregister()
         authenticatorHotKey.unregister()
+        recentCodesHotKey.unregister()
         state.recordingShortcut = kind
         shortcutRecorder = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             let used = MainActor.assumeIsolated { self?.record(event) ?? false }
@@ -377,6 +442,14 @@ extension AppDelegate: SettingsActions {
             self.shortcutRecorder = nil
         }
         state.recordingShortcut = nil
+        registerShortcuts()
+    }
+
+    func clearShortcut(_ kind: ShortcutKind) {
+        // Only the recent codes shortcut is optional. The others always need one.
+        guard kind == .recentCodes else { return }
+        stopRecordingShortcut()
+        preferences.recentCodesShortcut = nil
         registerShortcuts()
     }
 

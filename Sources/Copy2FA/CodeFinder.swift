@@ -30,7 +30,7 @@ enum CodeSource: Sendable {
     }
 }
 
-struct FoundCode: Sendable {
+struct FoundCode: Sendable, Equatable {
     let code: String
     let sender: String
     let source: CodeSource
@@ -55,39 +55,59 @@ struct LookupOptions: Sendable {
     var checksForNewMail: Bool
 }
 
-/// Finds the newest verification code across Mail and Messages.
+/// What looking for recent codes found.
+enum RecentLookup: Sendable {
+    /// Newest first, each code once.
+    case found([FoundCode])
+    case problem(Lookup)
+}
+
+/// Finds verification codes across Mail and Messages.
 enum CodeFinder {
     static func findLatest(_ options: LookupOptions) async -> Lookup {
-        guard options.readsMail || options.readsMessages else { return .noSources }
+        let result = await find(options, limit: 1)
+        if let code = result.codes.first { return .found(code) }
+        return result.problem
+    }
 
-        var attempt = await look(options)
-        if attempt.code == nil, options.readsMail, options.checksForNewMail, attempt.mailProblem == nil {
+    /// The last few codes from the lookback window, for when the newest isn't the one you need.
+    static func findRecent(_ options: LookupOptions) async -> RecentLookup {
+        let result = await find(options, limit: RecentCodes.limit)
+        if !result.codes.isEmpty { return .found(result.codes) }
+        return .problem(result.problem)
+    }
+
+    /// Up to `limit` codes, newest first. When there are none, `problem` says why.
+    private static func find(_ options: LookupOptions, limit: Int) async -> (codes: [FoundCode], problem: Lookup) {
+        guard options.readsMail || options.readsMessages else { return ([], .noSources) }
+
+        var attempt = await look(options, limit: limit)
+        if attempt.codes.isEmpty, options.readsMail, options.checksForNewMail, attempt.mailProblem == nil {
             // The code may still be on its way, so fetch new mail and look a few more times.
             try? await MailReader.checkForNewMail()
-            for delay in [1.5, 2.0, 3.0] where attempt.code == nil {
+            for delay in [1.5, 2.0, 3.0] where attempt.codes.isEmpty {
                 try? await Task.sleep(for: .seconds(delay))
-                attempt = await look(options)
+                attempt = await look(options, limit: limit)
             }
         }
-        if let code = attempt.code { return .found(code) }
-        return attempt.mailProblem ?? attempt.messagesProblem ?? .nothingFound
+        return (attempt.codes, attempt.mailProblem ?? attempt.messagesProblem ?? .nothingFound)
     }
 
     private struct Attempt {
-        var code: FoundCode?
+        var codes: [FoundCode] = []
         var mailProblem: Lookup?
         var messagesProblem: Lookup?
     }
 
-    /// Checks every turned-on source once and keeps the newest code.
-    private static func look(_ options: LookupOptions) async -> Attempt {
+    /// Checks every turned-on source once and keeps the newest codes.
+    private static func look(_ options: LookupOptions, limit: Int) async -> Attempt {
         var attempt = Attempt()
         var codes: [FoundCode] = []
         let cutoff = Date.now.addingTimeInterval(-Double(options.lookbackMinutes * 60))
 
         if options.readsMessages {
             do {
-                if let code = try await newestTextCode(since: cutoff) { codes.append(code) }
+                codes += try await textCodes(since: cutoff, limit: limit)
             } catch MessagesStoreError.noAccess {
                 attempt.messagesProblem = .needsMessagesAccess
             } catch MessagesStoreError.missing {
@@ -99,7 +119,7 @@ enum CodeFinder {
         if options.readsMail {
             do {
                 try await MailReader.launchIfNeeded()
-                if let code = try await newestMailCode(lookbackMinutes: options.lookbackMinutes) { codes.append(code) }
+                codes += try await mailCodes(lookbackMinutes: options.lookbackMinutes, limit: limit)
             } catch MailError.notAllowed {
                 attempt.mailProblem = .needsMailAccess
             } catch MailError.notInstalled {
@@ -108,28 +128,31 @@ enum CodeFinder {
                 attempt.mailProblem = .failed
             }
         }
-        attempt.code = codes.max { $0.received < $1.received }
+        attempt.codes = RecentCodes.pick(codes, limit: limit, code: \.code, received: \.received)
         return attempt
     }
 
-    private static func newestMailCode(lookbackMinutes: Int) async throws -> FoundCode? {
-        for message in try await MailReader.recentMessages(within: lookbackMinutes * 60) {
-            if let code = CodeExtractor.code(subject: message.subject, body: message.body) {
-                return FoundCode(code: code, sender: SenderName.display(message.sender), source: .mail, received: message.received)
+    /// Stops reading as soon as it has `limit` codes, so copying the newest one stays quick.
+    private static func mailCodes(lookbackMinutes: Int, limit: Int) async throws -> [FoundCode] {
+        var codes: [FoundCode] = []
+        for message in try await MailReader.recentMessages(within: lookbackMinutes * 60) where codes.count < limit {
+            if let code = CodeExtractor.code(subject: message.subject, body: message.body), !codes.contains(where: { $0.code == code }) {
+                codes.append(FoundCode(code: code, sender: SenderName.display(message.sender), source: .mail, received: message.received))
             }
         }
-        return nil
+        return codes
     }
 
-    private static func newestTextCode(since cutoff: Date) async throws -> FoundCode? {
+    private static func textCodes(since cutoff: Date, limit: Int) async throws -> [FoundCode] {
         let messages = try await Task.detached(priority: .userInitiated) {
             try MessagesStore.messages(since: cutoff)
         }.value
-        for message in messages {
-            if let code = CodeExtractor.code(inText: message.text) {
-                return FoundCode(code: code, sender: message.sender, source: .messages, received: message.received)
+        var codes: [FoundCode] = []
+        for message in messages where codes.count < limit {
+            if let code = CodeExtractor.code(inText: message.text), !codes.contains(where: { $0.code == code }) {
+                codes.append(FoundCode(code: code, sender: message.sender, source: .messages, received: message.received))
             }
         }
-        return nil
+        return codes
     }
 }

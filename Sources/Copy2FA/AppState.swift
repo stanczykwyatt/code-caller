@@ -2,8 +2,8 @@ import Copy2FACore
 import Observation
 import ServiceManagement
 
-enum ShortcutKind: Sendable {
-    case copyCode, authenticator
+enum ShortcutKind: Sendable, CaseIterable {
+    case copyCode, authenticator, recentCodes
 }
 
 /// What the app knows right now, shown in its windows. Never saved.
@@ -22,6 +22,8 @@ final class AppState {
 protocol SettingsActions: AnyObject {
     func startRecordingShortcut(_ kind: ShortcutKind)
     func stopRecordingShortcut()
+    /// Removes a shortcut that's optional, like the one for recent codes.
+    func clearShortcut(_ kind: ShortcutKind)
     func allowMailAccess()
     func openFullDiskAccessSettings()
     func setOpensAtLogin(_ enabled: Bool)
