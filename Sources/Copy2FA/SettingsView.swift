@@ -29,12 +29,15 @@ private struct GeneralSettings: View {
                 LabeledContent("Shortcut") {
                     ShortcutButton(kind: .copyCode, shortcut: preferences.shortcut, state: state, actions: actions)
                 }
+                LabeledContent("Recent codes shortcut") {
+                    ShortcutButton(kind: .recentCodes, shortcut: preferences.recentCodesShortcut, state: state, actions: actions)
+                }
                 Picker("Look back", selection: $preferences.lookbackMinutes) {
                     ForEach([5, 10, 15, 30], id: \.self) { Text("\($0) minutes").tag($0) }
                 }
                 Toggle("Check for new mail when no code is found", isOn: $preferences.checksForNewMail)
             } footer: {
-                Text("Press the shortcut in any app to copy your newest code.")
+                Text("Press the shortcut in any app to copy your newest code. To pick an earlier one, choose Recent Codes in the menu bar, or give it a shortcut of its own.")
                     .foregroundStyle(.secondary)
             }
 
@@ -96,9 +99,12 @@ private struct GeneralSettings: View {
 
 struct ShortcutButton: View {
     let kind: ShortcutKind
-    let shortcut: Shortcut
+    /// Nil for an optional shortcut that hasn't been recorded.
+    let shortcut: Shortcut?
     let state: AppState
     let actions: any SettingsActions
+
+    private var isRecording: Bool { state.recordingShortcut == kind }
 
     var body: some View {
         HStack(spacing: 8) {
@@ -108,14 +114,25 @@ struct ShortcutButton: View {
                     .help("Another app is using this shortcut. Pick a different one.")
                     .accessibilityLabel("Another app is using this shortcut")
             }
-            Button(state.recordingShortcut == kind ? "Type a shortcut…" : shortcut.displayString) {
-                if state.recordingShortcut == kind {
+            Button(isRecording ? "Type a shortcut…" : shortcut?.displayString ?? "Record Shortcut") {
+                if isRecording {
                     actions.stopRecordingShortcut()
                 } else {
                     actions.startRecordingShortcut(kind)
                 }
             }
-            .frame(minWidth: 120)
+            .frame(minWidth: 120, alignment: .trailing)
+            if kind == .recentCodes, shortcut != nil, !isRecording {
+                Button {
+                    actions.clearShortcut(kind)
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.borderless)
+                .help("Remove this shortcut")
+                .accessibilityLabel("Remove the recent codes shortcut")
+            }
         }
     }
 }

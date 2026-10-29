@@ -80,7 +80,7 @@ final class AuthenticatorPicker: NSObject, NSWindowDelegate {
 }
 
 /// A borderless panel that can still take keyboard focus.
-private final class KeyPanel: NSPanel {
+final class KeyPanel: NSPanel {
     override var canBecomeKey: Bool { true }
 }
 

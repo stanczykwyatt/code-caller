@@ -194,8 +194,8 @@ extension Confirmation {
         return parts.joined(separator: " · ")
     }
 
-    static func age(of date: Date) -> String {
-        let minutes = Int(Date.now.timeIntervalSince(date) / 60)
+    static func age(of date: Date, now: Date = .now) -> String {
+        let minutes = Int(now.timeIntervalSince(date) / 60)
         switch minutes {
         case ..<1: return "just now"
         case 1: return "1 min ago"
