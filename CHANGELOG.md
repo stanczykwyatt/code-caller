@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.0 (2026-10-28)
+
+- **Recent codes:** choose **Recent Codes** in the menu bar to see the last five codes from Mail and Messages, newest first, each with its sender, where it came from and how long ago it arrived. Pick one with the arrow keys and Return, or click it. A code sent by both email and text is listed once.
+- **Recent codes shortcut:** give Recent Codes a shortcut of its own in Settings. It's off until you record one, so Copy 2FA doesn't take over another key combination by itself.
+- The list follows **Show the code in the notice**, stays out of screenshots and screen sharing, and closes after a minute.
+- Copying the newest code is exactly as fast as before: Copy 2FA still stops reading at the first code it finds.
+
 ## 0.3.0 (2026-10-27)
 
 Code Caller is now **Copy 2FA**.
