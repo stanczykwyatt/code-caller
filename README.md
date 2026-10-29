@@ -174,6 +174,7 @@ Please [open an issue](https://github.com/stanczykwyatt/copy-2fa/issues/new/choo
 ## More free Mac utilities
 
 - **[Show Desktop](https://github.com/stanczykwyatt/show-desktop):** hide every window with one click or ⌃⇧D, then bring them all back exactly as they were. Like Windows+D for the Mac, with no internet access either.
+- **[Who Stole My Focus](https://github.com/stanczykwyatt/who-stole-my-focus):** find out which app keeps jumping in front of your work, even mid-typing. No permissions and no internet access.
 
 ## Contributing
 
