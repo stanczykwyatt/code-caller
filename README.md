@@ -171,10 +171,12 @@ Yes, in preview. It reads Outlook and Thunderbird and has the same authenticator
 **It missed a code or copied the wrong one.**
 Please [open an issue](https://github.com/stanczykwyatt/copy-2fa/issues/new/choose) with the text around the code. Remove the real code and personal details first.
 
-## More free Mac utilities
+## More free tools
 
 - **[Show Desktop](https://github.com/stanczykwyatt/show-desktop):** hide every window with one click or ⌃⇧D, then bring them all back exactly as they were. Like Windows+D for the Mac, with no internet access either.
 - **[Who Stole My Focus](https://github.com/stanczykwyatt/who-stole-my-focus):** find out which app keeps jumping in front of your work, even mid-typing. No permissions and no internet access.
+- **[mulligan](https://github.com/stanczykwyatt/mulligan):** undo for coding agents: snapshots at every prompt and tool call, so you can go back to any point. A command line tool for macOS and Linux, no internet access.
+- **[symbolhop](https://github.com/stanczykwyatt/symbolhop):** go-to-definition and find-references for coding agents, from your language servers. No internet access.
 
 ## Contributing
 
